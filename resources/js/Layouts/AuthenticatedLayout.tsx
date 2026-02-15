@@ -47,7 +47,7 @@ function AuthenticatedInner({
                         </div>
                     </header>
                 )}
-                <main>{children}</main>
+                <main className="p-6 lg:p-8">{children}</main>
             </div>
         </div>
     );

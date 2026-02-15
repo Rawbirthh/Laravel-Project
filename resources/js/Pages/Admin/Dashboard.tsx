@@ -84,11 +84,22 @@ export default function AdminDashboard({ users }: { users: any[] }) {
                                                     {user.email}
                                                 </td>
                                                 <td className="py-3 px-4">
-                                                    {user.roles?.some((r: any) => r.slug === 'admin') ? (
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                                                            <Shield className="w-3 h-3 mr-1" />
-                                                            Admin
-                                                        </span>
+                                                    {user.roles && user.roles.length > 0 ? (
+                                                        <div className="flex gap-1 flex-wrap">
+                                                            {user.roles.map((role: any) => (
+                                                                <span
+                                                                    key={role.id}
+                                                                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                                                                        role.slug === 'admin'
+                                                                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                                                                            : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30'
+                                                                    }`}
+                                                                >
+                                                                    <Shield className="w-3 h-3 mr-1" />
+                                                                    {role.name}
+                                                                </span>
+                                                            ))}
+                                                        </div>
                                                     ) : (
                                                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-700/50 text-slate-300 border border-slate-600/30">
                                                             User

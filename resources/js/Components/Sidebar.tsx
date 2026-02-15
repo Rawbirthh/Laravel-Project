@@ -6,12 +6,12 @@ import {
     CheckSquare, 
     Users, 
     Shield, 
+    Building2,
     Settings,
+    Key,
     LogOut,
     ChevronRight,
     ChevronLeft,
-    File,
-    Mail
 } from 'lucide-react';
 import { Link, useForm } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
@@ -30,16 +30,21 @@ export function Sidebar() {
     const [isCollapsed, setIsCollapsed] = useState(false);
 
     const userNavItems: NavItem[] = [
-        { label: 'Dashboard', href: route('dashboard'), icon: LayoutDashboard },
-        { label: 'Todos', href: route('todos.index'), icon: CheckSquare },
-        { label: 'My Files', href: '/files', icon: File },
-        { label: 'Messages', href: '/messages', icon: Mail },
+        { label: 'Dashboard', href: route('employee.dashboard'), icon: LayoutDashboard },
+        { label: 'My Tasks', href: route('todos.index'), icon: CheckSquare },
+    ];
+
+    const managerNavItems: NavItem[] = [
+        { label: 'Dashboard', href: route('manager.dashboard'), icon: LayoutDashboard },
+        { label: 'Team Tasks', href: route('todos.index'), icon: CheckSquare },
+        { label: 'Team Members', href: route('manager.team'), icon: Users },
     ];
 
     const adminNavItems: NavItem[] = [
         { label: 'Admin Dashboard', href: route('admin.dashboard'), icon: Shield },
-        { label: 'Users', href: route('admin.dashboard'), icon: Users },
-         { label: 'Messages', href: '/messages', icon: Mail },
+        { label: 'User Management', href: route('admin.user-management.index'), icon: Users },
+        { label: 'Departments', href: route('admin.departments.index'), icon: Building2 },
+        { label: 'Roles', href: route('admin.roles.index'), icon: Key },
     ];
 
     const settingsNavItems: NavItem[] = [
@@ -48,6 +53,8 @@ export function Sidebar() {
 
     const navItems = user?.roles?.some((r: Role) => r.slug === 'admin')
         ? [...adminNavItems]
+        : user?.roles?.some((r: Role) => r.slug === 'manager')
+        ? [...managerNavItems, ...settingsNavItems]
         : [...userNavItems, ...settingsNavItems];
 
     const { post } = useForm();
