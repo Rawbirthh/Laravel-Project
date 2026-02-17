@@ -7,8 +7,10 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ManagerController;
-use Illuminate\Foundation\Application;
+use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TodoController;
+use App\Http\Controllers\NotificationController;
+use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -63,7 +65,9 @@ Route::middleware('auth')->group(function () {
 
         // User management
         Route::get('/user-management', [UserManagementController::class, 'index'])->name('user-management.index');
+        Route::post('/user-management', [UserManagementController::class, 'store'])->name('user-management.store');
         Route::get('/user-management/{user}', [UserManagementController::class, 'edit'])->name('user-management.edit');
+        Route::put('/user-management/{user}', [UserManagementController::class, 'update'])->name('user-management.update');
         Route::put('/user-management/{user}/roles', [UserManagementController::class, 'updateRoles'])->name('user-management.update-roles');
         Route::put('/user-management/{user}/departments', [UserManagementController::class, 'updateDepartments'])->name('user-management.update-departments');
         Route::put('/user-management/{user}/all', [UserManagementController::class, 'updateAll'])->name('user-management.update-all');
@@ -73,11 +77,33 @@ Route::middleware('auth')->group(function () {
     Route::middleware('manager')->prefix('manager')->name('manager.')->group(function () {
         Route::get('/dashboard', [ManagerController::class, 'dashboard'])->name('dashboard');
         Route::get('/team', [ManagerController::class, 'team'])->name('team');
+        
+        // Task management
+        Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
+        Route::get('/tasks/create', [TaskController::class, 'create'])->name('tasks.create');
+        Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
+        Route::get('/tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
+        Route::get('/tasks/{task}/edit', [TaskController::class, 'edit'])->name('tasks.edit');
+        Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
+        Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
     });
 
     // Employee routes
     Route::middleware('employee')->prefix('employee')->name('employee.')->group(function () {
         Route::get('/dashboard', [EmployeeController::class, 'dashboard'])->name('dashboard');
+        
+        // Task viewing
+        Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
+        Route::get('/tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
+        Route::put('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.update-status');
+    });
+
+    // Notification routes (for all authenticated users)
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::get('/unread', [NotificationController::class, 'unread'])->name('unread');
+        Route::put('/read-all', [NotificationController::class, 'markAllAsRead'])->name('read-all');
+        Route::put('/{id}/read', [NotificationController::class, 'markAsRead'])->name('read');
     });
 });
 

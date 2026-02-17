@@ -3,6 +3,7 @@ export interface User {
     name: string;
     email: string;
     profile_picture?: string;
+    profile_picture_url?: string;
     roles?: Role[];
     departments?: Department[];
     created_at: string;

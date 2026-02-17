@@ -1,7 +1,7 @@
 import type { User, Role, Department } from '@/types/User';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { 
     User as UserIcon,
     Shield,
@@ -9,11 +9,16 @@ import {
     Save,
     Loader2,
     ArrowLeft,
-    Check
+    Check,
+    Upload,
+    X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/Components/ui/button';
+import { Input } from '@/Components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
+import InputLabel from '@/Components/InputLabel';
+import UserAvatar from '@/Components/UserAvatar';
 
 interface EditProps {
     user: User;
@@ -22,15 +27,24 @@ interface EditProps {
 }
 
 export default function Edit({ user, allRoles, allDepartments }: EditProps) {
-    const [activeTab, setActiveTab] = useState('roles');
+    const [activeTab, setActiveTab] = useState('details');
     const [selectedRoles, setSelectedRoles] = useState<number[]>(
         user.roles?.map(r => r.id) || []
     );
     const [selectedDepartments, setSelectedDepartments] = useState<number[]>(
         user.departments?.map(d => d.id) || []
     );
+    const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(
+        user.profile_picture_url || null
+    );
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const { post, processing } = useForm({
+    const { data, setData, post, processing, errors } = useForm({
+        name: user.name,
+        email: user.email,
+        password: '',
+        password_confirmation: '',
+        profile_picture: null as File | null,
         roles: selectedRoles,
         departments: selectedDepartments,
     });
@@ -51,6 +65,42 @@ export default function Edit({ user, allRoles, allDepartments }: EditProps) {
         );
     };
 
+    const handleProfilePictureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setData('profile_picture', file);
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                setProfilePicturePreview(e.target?.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleRemoveProfilePicture = () => {
+        setData('profile_picture', null);
+        setProfilePicturePreview(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
+    const handleSaveDetails = (e: React.FormEvent) => {
+        e.preventDefault();
+        router.post(route('admin.user-management.update', user.id), {
+            _method: 'put',
+            name: data.name,
+            email: data.email,
+            password: data.password || undefined,
+            password_confirmation: data.password_confirmation || undefined,
+            profile_picture: data.profile_picture,
+            roles: selectedRoles,
+            departments: selectedDepartments,
+        }, {
+            forceFormData: true,
+        });
+    };
+
     const handleSaveRoles = (e: React.FormEvent) => {
         e.preventDefault();
         router.put(route('admin.user-management.update-roles', user.id), {
@@ -67,9 +117,17 @@ export default function Edit({ user, allRoles, allDepartments }: EditProps) {
 
     const handleSaveAll = (e: React.FormEvent) => {
         e.preventDefault();
-        router.put(route('admin.user-management.update-all', user.id), {
+        router.post(route('admin.user-management.update', user.id), {
+            _method: 'put',
+            name: data.name,
+            email: data.email,
+            password: data.password || undefined,
+            password_confirmation: data.password_confirmation || undefined,
+            profile_picture: data.profile_picture,
             roles: selectedRoles,
             departments: selectedDepartments,
+        }, {
+            forceFormData: true,
         });
     };
 
@@ -113,9 +171,7 @@ export default function Edit({ user, allRoles, allDepartments }: EditProps) {
                     <Card className="bg-[#0f0f10] border-slate-800/50 shadow-xl mb-6">
                         <CardContent className="pt-6">
                             <div className="flex items-center gap-4">
-                                <div className="w-16 h-16 rounded-full bg-indigo-500/10 flex items-center justify-center">
-                                    <UserIcon className="w-8 h-8 text-indigo-400" />
-                                </div>
+                                <UserAvatar user={user} size="xl" />
                                 <div>
                                     <h3 className="text-lg font-semibold text-white">{user.name}</h3>
                                     <p className="text-slate-400">{user.email}</p>
@@ -126,6 +182,14 @@ export default function Edit({ user, allRoles, allDepartments }: EditProps) {
 
                     {/* Tab Navigation */}
                     <div className="flex gap-2 mb-6">
+                        <Button
+                            variant={activeTab === 'details' ? 'default' : 'outline'}
+                            onClick={() => setActiveTab('details')}
+                            className={activeTab === 'details' ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-slate-800/50 hover:text-white hover:bg-slate-800/50 hover:text-white'}
+                        >
+                            <UserIcon className="w-4 h-4 mr-2" />
+                            Details
+                        </Button>
                         <Button
                             variant={activeTab === 'roles' ? 'default' : 'outline'}
                             onClick={() => setActiveTab('roles')}
@@ -143,6 +207,144 @@ export default function Edit({ user, allRoles, allDepartments }: EditProps) {
                             Departments
                         </Button>
                     </div>
+
+                    {/* Details Tab Content */}
+                    {activeTab === 'details' && (
+                        <Card className="bg-[#0f0f10] border-slate-800/50 shadow-xl">
+                            <CardHeader className="pb-4">
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-white text-lg flex items-center gap-2">
+                                        <UserIcon className="w-5 h-5 text-indigo-400" />
+                                        User Details
+                                    </CardTitle>
+                                    <form onSubmit={handleSaveDetails}>
+                                        <Button
+                                            type="submit"
+                                            disabled={processing}
+                                            className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2"
+                                        >
+                                            {processing ? (
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                            ) : (
+                                                <Save className="w-4 h-4" />
+                                            )}
+                                            Save Details
+                                        </Button>
+                                    </form>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <form onSubmit={handleSaveDetails} className="space-y-4">
+                                    {/* Profile Picture Upload */}
+                                    <div className="grid gap-2">
+                                        <InputLabel className="text-slate-300">Profile Picture</InputLabel>
+                                        <div className="flex items-center gap-4">
+                                            <div className="relative">
+                                                {profilePicturePreview ? (
+                                                    <div className="relative">
+                                                        <img
+                                                            src={profilePicturePreview}
+                                                            alt="Profile preview"
+                                                            className="w-20 h-20 rounded-full object-cover border-2 border-slate-700"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleRemoveProfilePicture}
+                                                            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-400 transition-colors"
+                                                        >
+                                                            <X className="w-3 h-3 text-white" />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="w-20 h-20 rounded-full bg-slate-800 border-2 border-dashed border-slate-600 flex items-center justify-center">
+                                                        <UserIcon className="w-8 h-8 text-slate-500" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1">
+                                                <input
+                                                    ref={fileInputRef}
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={handleProfilePictureChange}
+                                                    className="hidden"
+                                                    id="profile_picture"
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    className="border-slate-700 text-slate-300 hover:bg-slate-800/50 hover:text-white gap-2"
+                                                >
+                                                    <Upload className="w-4 h-4" />
+                                                    Upload New Image
+                                                </Button>
+                                                <p className="text-xs text-slate-500 mt-1">Max 2MB, JPG/PNG/GIF</p>
+                                            </div>
+                                        </div>
+                                        {errors.profile_picture && (
+                                            <p className="text-sm text-red-400">{errors.profile_picture}</p>
+                                        )}
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <InputLabel htmlFor="name" className="text-slate-300">Name</InputLabel>
+                                        <Input
+                                            id="name"
+                                            type="text"
+                                            value={data.name}
+                                            onChange={(e) => setData('name', e.target.value)}
+                                            className="bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50 focus:ring-indigo-500/20"
+                                        />
+                                        {errors.name && (
+                                            <p className="text-sm text-red-400">{errors.name}</p>
+                                        )}
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <InputLabel htmlFor="email" className="text-slate-300">Email</InputLabel>
+                                        <Input
+                                            id="email"
+                                            type="email"
+                                            value={data.email}
+                                            onChange={(e) => setData('email', e.target.value)}
+                                            className="bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50 focus:ring-indigo-500/20"
+                                        />
+                                        {errors.email && (
+                                            <p className="text-sm text-red-400">{errors.email}</p>
+                                        )}
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <InputLabel htmlFor="password" className="text-slate-300">New Password (leave blank to keep current)</InputLabel>
+                                        <Input
+                                            id="password"
+                                            type="password"
+                                            value={data.password}
+                                            onChange={(e) => setData('password', e.target.value)}
+                                            className="bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50 focus:ring-indigo-500/20"
+                                            placeholder="Enter new password"
+                                        />
+                                        {errors.password && (
+                                            <p className="text-sm text-red-400">{errors.password}</p>
+                                        )}
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <InputLabel htmlFor="password_confirmation" className="text-slate-300">Confirm New Password</InputLabel>
+                                        <Input
+                                            id="password_confirmation"
+                                            type="password"
+                                            value={data.password_confirmation}
+                                            onChange={(e) => setData('password_confirmation', e.target.value)}
+                                            className="bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50 focus:ring-indigo-500/20"
+                                            placeholder="Confirm new password"
+                                        />
+                                    </div>
+                                </form>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Roles Tab Content */}
                     {activeTab === 'roles' && (

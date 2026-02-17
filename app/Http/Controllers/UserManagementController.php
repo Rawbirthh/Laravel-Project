@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Services\UserManagementService;
 use App\Repositories\SearchPaginationRepository;
 use App\Models\User;
+use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateUserRequest;
 use App\Http\Requests\UpdateUserRolesRequest;
 use App\Http\Requests\UpdateUserDepartmentsRequest;
 use App\Http\Requests\UpdateUserAllRequest;
@@ -33,9 +35,14 @@ class UserManagementController extends Controller
             return $user;
         });
 
+        $allRoles = $this->userManagementService->getAllRoles();
+        $allDepartments = $this->userManagementService->getAllDepartments();
+
         return Inertia::render('UserManagement/Index', [
             'users' => $users,
             'filters' => ['search' => $search],
+            'allRoles' => $allRoles,
+            'allDepartments' => $allDepartments,
         ]);
     }
 
@@ -52,6 +59,33 @@ class UserManagementController extends Controller
             'allRoles' => $allRoles,
             'allDepartments' => $allDepartments,
         ]);
+    }
+
+    public function store(StoreUserRequest $request)
+    {
+        $this->authorize('create', User::class);
+
+        $this->userManagementService->createUser(
+            $request->validated(),
+            $request->hasFile('profile_picture') ? $request->file('profile_picture') : null
+        );
+
+        return redirect()->route('admin.user-management.index')
+            ->with('success', 'User created successfully!');
+    }
+
+    public function update(UpdateUserRequest $request, User $user)
+    {
+        $this->authorize('update', $user);
+
+        $this->userManagementService->updateUser(
+            $user,
+            $request->validated(),
+            $request->hasFile('profile_picture') ? $request->file('profile_picture') : null
+        );
+
+        return redirect()->route('admin.user-management.index')
+            ->with('success', 'User updated successfully!');
     }
 
     public function updateRoles(UpdateUserRolesRequest $request, User $user)

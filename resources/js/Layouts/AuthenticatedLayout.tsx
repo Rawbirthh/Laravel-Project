@@ -2,6 +2,7 @@ import { usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useEffect } from 'react';
 import { ToastProvider, useToast } from '@/components/ui/toast-provider';
 import { Sidebar } from '@/components/Sidebar';
+import NotificationBell from '@/Components/NotificationBell';
 
 export default function Authenticated({
     header,
@@ -42,8 +43,9 @@ function AuthenticatedInner({
             <div className="ml-64 transition-all duration-300">
                 {header && (
                     <header className="bg-[#0f0f10] border-b border-slate-800/50 shadow-sm">
-                        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+                        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 flex items-center justify-between">
                             {header}
+                            <NotificationBell />
                         </div>
                     </header>
                 )}

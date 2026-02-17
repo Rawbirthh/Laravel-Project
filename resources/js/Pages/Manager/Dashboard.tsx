@@ -1,9 +1,21 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
-import { Users, CheckSquare, TrendingUp, Building2, Shield } from 'lucide-react';
+import { Head, router } from '@inertiajs/react';
+import { CheckSquare, TrendingUp, Shield, ClipboardList, Plus, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/Components/ui/button';
+import UserAvatar from '@/Components/UserAvatar';
+import { cn } from '@/lib/utils';
+import type { Task, TaskStats } from '@/types/Task';
+import type { User } from '@/types/User';
 
-export default function ManagerDashboard({ stats, users, recentTodos }: any) {
+interface Props {
+    stats: { employees: number };
+    taskStats: TaskStats;
+    users: User[];
+    recentTasks: Task[];
+}
+
+export default function ManagerDashboard({ stats, taskStats, users, recentTasks }: Props) {
     return (
         <AuthenticatedLayout
             header={
@@ -18,19 +30,25 @@ export default function ManagerDashboard({ stats, users, recentTodos }: any) {
 
             <div className="py-8">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                        {/* <Card className="bg-[#0f0f10] border-slate-800/50">
-                            <CardHeader>
-                                <CardTitle className="text-white flex items-center gap-2">
-                                    <Users className="w-5 h-5 text-indigo-400" />
-                                    Total Users
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-3xl font-bold text-white">{stats.totalUsers}</p>
-                            </CardContent>
-                        </Card> */}
+                    <div className="flex gap-3 mb-6">
+                        <Button
+                            onClick={() => router.get(route('manager.tasks.index'))}
+                            className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2"
+                        >
+                            <ClipboardList className="w-4 h-4" />
+                            Task Management
+                        </Button>
+                        <Button
+                            onClick={() => router.get(route('manager.tasks.create'))}
+                            variant="outline"
+                            className="border-slate-700 text-slate-300 gap-2 bg-[#0f0f10]"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Assign New Task
+                        </Button>
+                    </div>
 
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
                         <Card className="bg-[#0f0f10] border-slate-800/50">
                             <CardHeader>
                                 <CardTitle className="text-white flex items-center gap-2">
@@ -51,7 +69,19 @@ export default function ManagerDashboard({ stats, users, recentTodos }: any) {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-3xl font-bold text-white">{stats.totalTodos}</p>
+                                <p className="text-3xl font-bold text-white">{taskStats.total}</p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="bg-[#0f0f10] border-slate-800/50">
+                            <CardHeader>
+                                <CardTitle className="text-white flex items-center gap-2">
+                                    <Clock className="w-5 h-5 text-yellow-400" />
+                                    Pending
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-3xl font-bold text-white">{taskStats.pending}</p>
                             </CardContent>
                         </Card>
 
@@ -59,11 +89,23 @@ export default function ManagerDashboard({ stats, users, recentTodos }: any) {
                             <CardHeader>
                                 <CardTitle className="text-white flex items-center gap-2">
                                     <TrendingUp className="w-5 h-5 text-blue-400" />
+                                    In Progress
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-3xl font-bold text-white">{taskStats.in_progress}</p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="bg-[#0f0f10] border-slate-800/50">
+                            <CardHeader>
+                                <CardTitle className="text-white flex items-center gap-2">
+                                    <CheckSquare className="w-5 h-5 text-emerald-400" />
                                     Completed
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-3xl font-bold text-white">{stats.completedTodos}</p>
+                                <p className="text-3xl font-bold text-white">{taskStats.completed}</p>
                             </CardContent>
                         </Card>
                     </div>
@@ -80,25 +122,21 @@ export default function ManagerDashboard({ stats, users, recentTodos }: any) {
                                     </div>
                                 ) : (
                                     <div className="space-y-3">
-                                        {users.slice(0, 5).map((user: any) => (
+                                        {users.slice(0, 5).map((teamUser) => (
                                             <div
-                                                key={user.id}
+                                                key={teamUser.id}
                                                 className="flex items-center justify-between p-3 rounded-lg bg-slate-900/50 border border-slate-800/50"
                                             >
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center">
-                                                        <span className="text-white font-medium">
-                                                            {user.name.charAt(0).toUpperCase()}
-                                                        </span>
-                                                    </div>
+                                                    <UserAvatar user={teamUser} size="md" />
                                                     <div>
-                                                        <p className="text-sm font-medium text-slate-200">{user.name}</p>
-                                                        <p className="text-xs text-slate-500">{user.email}</p>
+                                                        <p className="text-sm font-medium text-slate-200">{teamUser.name}</p>
+                                                        <p className="text-xs text-slate-500">{teamUser.email}</p>
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-1 flex-wrap">
-                                                    {user.roles && user.roles.length > 0 ? (
-                                                        user.roles.map((role: any) => (
+                                                    {teamUser.roles && teamUser.roles.length > 0 ? (
+                                                        teamUser.roles.map((role) => (
                                                             <span
                                                                 key={role.id}
                                                                 className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/30"
@@ -121,43 +159,43 @@ export default function ManagerDashboard({ stats, users, recentTodos }: any) {
 
                         <Card className="bg-[#0f0f10] border-slate-800/50">
                             <CardHeader>
-                                <CardTitle className="text-white">Recent Team Tasks</CardTitle>
+                                <CardTitle className="text-white">Recent Assigned Tasks</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                {recentTodos.length === 0 ? (
+                                {recentTasks.length === 0 ? (
                                     <div className="text-center py-8">
                                         <p className="text-slate-500">No recent tasks</p>
                                     </div>
                                 ) : (
                                     <div className="space-y-3">
-                                        {recentTodos.slice(0, 5).map((todo: any) => (
+                                        {recentTasks.slice(0, 5).map((task) => (
                                             <div
-                                                key={todo.id}
+                                                key={task.id}
                                                 className="flex items-center gap-3 p-3 rounded-lg bg-slate-900/50 border border-slate-800/50"
                                             >
-                                                <div
-                                                    className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                                                        todo.completed
-                                                            ? 'bg-emerald-500 border-emerald-500'
-                                                            : 'border-slate-600'
-                                                    }`}
-                                                >
-                                                    {todo.completed && (
-                                                        <div className="w-3 h-3 bg-white rounded-sm" />
-                                                    )}
-                                                </div>
-                                                <div className="flex-1">
-                                                    <p
-                                                        className={`text-sm font-medium ${
-                                                            todo.completed ? 'text-slate-500 line-through' : 'text-slate-200'
-                                                        }`}
-                                                    >
-                                                        {todo.title}
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-medium text-slate-200 truncate">
+                                                        {task.title}
                                                     </p>
-                                                    <p className="text-xs text-slate-500 mt-1">
-                                                        {todo.user?.name || 'Unknown'} • {new Date(todo.created_at).toLocaleDateString()}
-                                                    </p>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        {task.assignee && (
+                                                            <span className="text-xs text-slate-500">
+                                                                {task.assignee.name}
+                                                            </span>
+                                                        )}
+                                                        <span className={cn(
+                                                            "px-1.5 py-0.5 rounded text-xs font-medium border capitalize",
+                                                            task.status === 'pending' ? 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30' :
+                                                            task.status === 'in_progress' ? 'text-blue-400 bg-blue-400/10 border-blue-400/30' :
+                                                            'text-green-400 bg-green-400/10 border-green-400/30'
+                                                        )}>
+                                                            {task.status.replace('_', ' ')}
+                                                        </span>
+                                                    </div>
                                                 </div>
+                                                <span className="text-xs text-slate-500 shrink-0">
+                                                    {new Date(task.created_at).toLocaleDateString()}
+                                                </span>
                                             </div>
                                         ))}
                                     </div>

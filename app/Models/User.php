@@ -24,12 +24,24 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+    protected $appends = [
+        'profile_picture_url',
+    ];
+
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function getProfilePictureUrlAttribute(): string
+    {
+        if ($this->profile_picture) {
+            return asset('storage/' . $this->profile_picture);
+        }
+        return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&color=7F9CF5&background=EBF4FF';
     }
 
     public function todos()
@@ -55,5 +67,25 @@ class User extends Authenticatable
     public function departments()
     {
         return $this->belongsToMany(Department::class, 'department_user');
+    }
+
+    public function assignedTasks()
+    {
+        return $this->hasMany(Task::class, 'assigned_to');
+    }
+
+    public function createdTasks()
+    {
+        return $this->hasMany(Task::class, 'assigned_by');
+    }
+
+    public function notifications()
+    {
+        return $this->hasMany(Notification::class)->latest();
+    }
+
+    public function unreadNotificationsCount(): int
+    {
+        return $this->notifications()->unread()->count();
     }
 }
