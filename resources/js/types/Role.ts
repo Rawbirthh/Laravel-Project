@@ -5,4 +5,11 @@ export interface Role {
     slug: string;
     created_at: string;
     updated_at: string;
+    permissions?: Permission[];
+}
+
+export interface Permission {
+    id: number;
+    permission_name: string;
+    display_name: string;
 }

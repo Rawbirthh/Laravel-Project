@@ -10,6 +10,7 @@ use App\Http\Controllers\ManagerController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TodoController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PermissionController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -26,11 +27,12 @@ Route::get('/', function () {
 Route::get('/dashboard', function () {
     $user = auth()->user();
     
-    if ($user->isAdmin()) {
+    // Redirect based on permissions, not just roles
+    if ($user->hasPermission('access.admin.dashboard')) {
         return redirect()->route('admin.dashboard');
     }
     
-    if ($user->hasRole('manager')) {
+    if ($user->hasPermission('access.manager.dashboard')) {
         return redirect()->route('manager.dashboard');
     }
     
@@ -48,7 +50,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/todos/{todo}', [TodoController::class, 'destroy'])->name('todos.destroy');
 
     // Admin-only routes
-    Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
+    Route::middleware('permission:access.admin.dashboard')->prefix('admin')->name('admin.')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
         
         // Departments management
@@ -63,6 +65,12 @@ Route::middleware('auth')->group(function () {
         Route::put('/roles/{role}', [RoleController::class, 'update'])->name('roles.update');
         Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
 
+        // Permissions management
+        Route::get('/permissions', [PermissionController::class, 'index'])->name('permissions.index');
+        Route::post('/permissions', [PermissionController::class, 'store'])->name('permissions.store');
+        Route::put('/permissions/{permission}', [PermissionController::class, 'update'])->name('permissions.update');
+        Route::delete('/permissions/{permission}', [PermissionController::class, 'destroy'])->name('permissions.destroy');
+
         // User management
         Route::get('/user-management', [UserManagementController::class, 'index'])->name('user-management.index');
         Route::post('/user-management', [UserManagementController::class, 'store'])->name('user-management.store');
@@ -74,7 +82,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // Manager routes
-    Route::middleware('manager')->prefix('manager')->name('manager.')->group(function () {
+    Route::middleware('permission:access.manager.dashboard')->prefix('manager')->name('manager.')->group(function () {
         Route::get('/dashboard', [ManagerController::class, 'dashboard'])->name('dashboard');
         Route::get('/team', [ManagerController::class, 'team'])->name('team');
         
@@ -89,7 +97,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // Employee routes
-    Route::middleware('employee')->prefix('employee')->name('employee.')->group(function () {
+    Route::middleware('permission:access.employee.dashboard')->prefix('employee')->name('employee.')->group(function () {
         Route::get('/dashboard', [EmployeeController::class, 'dashboard'])->name('dashboard');
         
         // Task viewing

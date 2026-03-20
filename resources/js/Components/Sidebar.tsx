@@ -1,5 +1,3 @@
-'use client';
-
 import { usePage } from '@inertiajs/react';
 import { 
     LayoutDashboard, 
@@ -9,6 +7,7 @@ import {
     Building2,
     Settings,
     Key,
+    Lock,
     LogOut,
     ChevronRight,
     ChevronLeft,
@@ -16,46 +15,49 @@ import {
 import { Link, useForm } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
-import { Role, User } from '@/types';
+import { User } from '@/types';
 
 interface NavItem {
     label: string;
     href: string;
     icon: any;
+    permission?: string; // Optional permission key
 }
 
 export function Sidebar() {
     const page = usePage();
     const user = page.props.auth.user as User;
+    const permissions = (page.props.auth.permissions as string[]) || [];
+    
     const [isCollapsed, setIsCollapsed] = useState(false);
 
-    const userNavItems: NavItem[] = [
-        { label: 'Dashboard', href: route('employee.dashboard'), icon: LayoutDashboard },
-        { label: 'My Tasks', href: route('todos.index'), icon: CheckSquare },
-    ];
+    const allNavItems: NavItem[] = [
+        // Employee Items
+        { label: 'Dashboard', href: route('employee.dashboard'), icon: LayoutDashboard, permission: 'access.employee.dashboard' },
+        { label: 'My Tasks', href: route('todos.index'), icon: CheckSquare, permission: 'view_own_tasks' },
+        { label: 'Team Tasks', href: route('employee.tasks.index'), icon: CheckSquare, permission: 'view.my-own.task' },
 
-    const managerNavItems: NavItem[] = [
-        { label: 'Dashboard', href: route('manager.dashboard'), icon: LayoutDashboard },
-        { label: 'Team Tasks', href: route('todos.index'), icon: CheckSquare },
-        { label: 'Team Members', href: route('manager.team'), icon: Users },
-    ];
+        // Manager Items
+        { label: 'Manager Dashboard', href: route('manager.dashboard'), icon: LayoutDashboard, permission: 'access.manager.dashboard' },
+        { label: 'Team Tasks', href: route('manager.tasks.index'), icon: CheckSquare, permission: 'view.all-employee.task' },
+        { label: 'Team Members', href: route('manager.team'), icon: Users, permission: 'view.manager.team' },
 
-    const adminNavItems: NavItem[] = [
-        { label: 'Admin Dashboard', href: route('admin.dashboard'), icon: Shield },
-        { label: 'User Management', href: route('admin.user-management.index'), icon: Users },
-        { label: 'Departments', href: route('admin.departments.index'), icon: Building2 },
-        { label: 'Roles', href: route('admin.roles.index'), icon: Key },
-    ];
+        // Admin Items
+        { label: 'Admin Dashboard', href: route('admin.dashboard'), icon: Shield, permission: 'access.admin.dashboard' },
+        { label: 'User Management', href: route('admin.user-management.index'), icon: Users, permission: 'create.users' },
+        { label: 'Departments', href: route('admin.departments.index'), icon: Building2, permission: 'create.departments' },
+        { label: 'Roles', href: route('admin.roles.index'), icon: Key, permission: 'create.roles' },
+        { label: 'Permissions', href: route('admin.permissions.index'), icon: Lock, permission: 'create.permissions' },
 
-    const settingsNavItems: NavItem[] = [
+        // Settings (Visible to everyone or protected if needed)
         { label: 'Profile', href: route('profile.edit'), icon: Settings },
     ];
 
-    const navItems = user?.roles?.some((r: Role) => r.slug === 'admin')
-        ? [...adminNavItems]
-        : user?.roles?.some((r: Role) => r.slug === 'manager')
-        ? [...managerNavItems, ...settingsNavItems]
-        : [...userNavItems, ...settingsNavItems];
+    // Filter items: Show if no permission is required OR if user has the permission
+    const navItems = allNavItems.filter((item) => {
+        if (!item.permission) return true;
+        return permissions.includes(item.permission);
+    });
 
     const { post } = useForm();
 
@@ -82,7 +84,9 @@ export function Sidebar() {
                             <div>
                                 <h1 className="text-sm font-semibold text-white">App</h1>
                                 <p className="text-xs text-slate-400">
-                                    {user?.roles?.some((r: Role) => r.slug === 'admin') ? 'Admin' : 'User'}
+                                    {/* Display highest permission level or just 'User' */}
+                                    {permissions.includes('access.admin.dashboard') ? 'Admin' : 
+                                     permissions.includes('access.manager.dashboard') ? 'Manager' : 'User'}
                                 </p>
                             </div>
                         </div>
@@ -91,11 +95,7 @@ export function Sidebar() {
                         onClick={() => setIsCollapsed(!isCollapsed)}
                         className="rounded-lg p-2 text-slate-400 hover:bg-slate-800/50 hover:text-white transition-colors"
                     >
-                        {isCollapsed ? (
-                            <ChevronRight className="h-5 w-5" />
-                        ) : (
-                            <ChevronLeft className="h-5 w-5" />
-                        )}
+                        {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
                     </button>
                 </div>
 
@@ -107,7 +107,7 @@ export function Sidebar() {
                             const Icon = item.icon;
 
                             return (
-                                <li key={item.href}>
+                                <li key={item.href + item.label}>
                                     <Link
                                         href={item.href}
                                         className={cn(

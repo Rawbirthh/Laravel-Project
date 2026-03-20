@@ -88,4 +88,16 @@ class User extends Authenticatable
     {
         return $this->notifications()->unread()->count();
     }
+
+    public function hasPermission(string $permissionName): bool
+    {
+        return $this->roles()->whereHas('permissions', function ($query) use ($permissionName) {
+            $query->where('permission_name', $permissionName);
+        })->exists();
+    }
+
+    public function getAllPermissionNames(): array
+    {
+        return $this->roles->flatMap->permissions->pluck('permission_name')->unique()->toArray();
+    }
 }

@@ -8,23 +8,23 @@ use Illuminate\Auth\Access\Response;
 
 class DepartmentPolicy
 {
-    public function view(User $user, Department $department): bool
+    public function view(User $user, Department $department)
     {
-        return true;
+        return $user->hasPermission('create.departments');
     }
 
-    public function create(User $user): bool
+    public function create(User $user)
     {
-        return $user->isAdmin();
+        return $user->hasPermission('create.departments');
     }
 
-    public function update(User $user, Department $department): bool
+    public function update(User $user, Department $department)
     {
-        return $user->isAdmin();
+        return $user->hasPermission('update.departments');
     }
 
-    public function delete(User $user, Department $department): bool
+    public function delete(User $user, Department $department)
     {
-        return $user->isAdmin();
+        return $user->hasPermission('delete.departments');
     }
 }

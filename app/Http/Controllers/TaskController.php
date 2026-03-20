@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Task;
+use App\Models\User;
 use App\Services\TaskService;
 use App\Services\NotificationService;
 use App\Http\Requests\StoreTaskRequest;
@@ -25,10 +26,11 @@ class TaskController extends Controller
 
     public function index(Request $request)
     {
+        $this->authorize('view', Task::class);
         $user = auth()->user();
         $filters = $request->only(['status', 'priority', 'assigned_to']);
 
-        if ($user->hasRole('manager')) {
+        if ($user->hasPermission('view.all-employee.task')) {
             $tasks = $this->taskService->getTasksAssignedBy($user, $filters);
             $employees = $this->taskService->getAssignableEmployees($user);
             $stats = $this->taskService->getManagerTaskStats($user);

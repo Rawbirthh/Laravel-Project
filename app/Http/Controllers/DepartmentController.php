@@ -19,6 +19,7 @@ class DepartmentController extends Controller
 
     public function index(Request $request)
     {
+        $this->authorize('view', new Department());
         $search = $request->get('search', '');
         $departments = $this->searchPaginationRepository->searchAndPaginate(new Department(), $search, ['code', 'name']);
 

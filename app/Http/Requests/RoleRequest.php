@@ -17,6 +17,8 @@ class RoleRequest extends FormRequest
             'code' => 'required|string|max:50|unique:roles,code,' . $this->route('role')?->id,
             'name' => 'required|string|max:255',
             'slug' => 'nullable|string|max:255',
+            'permissions' => 'nullable|array',
+            'permissions.*' => 'integer|exists:permissions,id',
         ];
     }
 
@@ -32,6 +34,9 @@ class RoleRequest extends FormRequest
             'name.max' => 'Name must not exceed 255 characters',
             'slug.string' => 'Slug must be a string',
             'slug.max' => 'Slug must not exceed 255 characters',
+            'permissions.array' => 'Permissions must be an array',
+            'permissions.*.integer' => 'Each permission must be an integer',
+            'permissions.*.exists' => 'One or more permissions are invalid',
         ];
     }
 }

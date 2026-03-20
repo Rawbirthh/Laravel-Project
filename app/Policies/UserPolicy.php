@@ -9,28 +9,28 @@ class UserPolicy
 {
     use HandlesAuthorization;
 
-    public function viewAny(User $user): bool
+    public function viewAny(User $user)
     {
         return $user->isAdmin();
     }
 
-    public function view(User $user, User $model): bool
+    public function view(User $user)
     {
         return $user->isAdmin();
     }
 
-    public function create(User $user): bool
+    public function create(User $user)
     {
-        return $user->isAdmin();
+        return $user->hasPermission('create.users');
     }
 
-    public function update(User $user, User $model): bool
+    public function update(User $user)
     {
-        return $user->isAdmin();
+        return $user->hasPermission('update.users');
     }
 
-    public function delete(User $user, User $model): bool
+    public function delete(User $user)
     {
-        return $user->isAdmin();
+        return $user->hasPermission('delete.users');
     }
 }

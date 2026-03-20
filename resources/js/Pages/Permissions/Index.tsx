@@ -1,4 +1,3 @@
-import type { Role, Permission } from '@/types/Role';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { useState } from 'react';
@@ -7,7 +6,7 @@ import {
     Trash2, 
     Edit2, 
     Shield,
-    X,
+    X,  
     Save,
     Loader2,
     Search
@@ -17,32 +16,43 @@ import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Separator } from '@/Components/ui/separator';
-import { Checkbox } from '@/Components/ui/checkbox';
-import { Badge } from '@/Components/ui/badge';
-import { PaginatedResponse , SearchFilter} from '@/types/index';
+import { Textarea } from '@/Components/ui/textarea';
+import { PaginatedResponse, SearchFilter } from '@/types/index';
 
-interface IndexProps {
-    departments: PaginatedResponse<Role>;
-    filters: SearchFilter;
-    roles: PaginatedResponse<Role>;
-    allPermissions: Permission[];
+interface Permission {
+    id: number;
+    permission_name: string;
+    display_name: string;
+    description: string | null;
+    created_at: string;
+    updated_at: string;
 }
 
-export default function Index({ roles, filters, allPermissions }: IndexProps) {
-    const [editingRole, setEditingRole] = useState<Role | null>(null);
+interface PermissionFormData {
+    permission_name: string;
+    display_name: string;
+    description: string;
+}
+
+interface IndexProps {
+    permissions: PaginatedResponse<Permission>;
+    filters: SearchFilter;
+}
+
+export default function Index({ permissions, filters }: IndexProps) {
+    const [editingPermission, setEditingPermission] = useState<Permission | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [searchQuery, setSearchQuery] = useState(filters.search);
 
-    const { data, setData, post, put, delete: destroy, errors, reset, processing } = useForm({
-        code: '',
-        name: '',
-        slug: '',
-        permissions: [] as number[],
+    const { data, setData, post, put, delete: destroy, errors, reset, processing } = useForm<PermissionFormData>({
+        permission_name: '',
+        display_name: '',
+        description: '',
     });
 
     const handleSearch = (value: string) => {
         setSearchQuery(value);
-        router.get(route('admin.roles.index'), { search: value }, {
+        router.get(route('admin.permissions.index'), { search: value }, {
             preserveState: true,
             replace: true,
         });
@@ -50,32 +60,31 @@ export default function Index({ roles, filters, allPermissions }: IndexProps) {
 
     const handleCreate = () => {
         setIsCreating(true);
-        setEditingRole(null);
+        setEditingPermission(null);
         reset();
     };
 
-    const handleEdit = (role: Role) => {
-        setEditingRole(role);
+    const handleEdit = (permission: Permission) => {
+        setEditingPermission(permission);
         setIsCreating(false);
         setData({
-            code: role.code,
-            name: role.name,
-            slug: role.slug || '',
-            permissions: role.permissions?.map(p => p.id) || [],
+            permission_name: permission.permission_name,
+            display_name: permission.display_name,
+            description: permission.description || '',
         });
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (editingRole) {
-            put(route('admin.roles.update', editingRole.id), {
+        if (editingPermission) {
+            put(route('admin.permissions.update', editingPermission.id), {
                 onSuccess: () => {
-                    setEditingRole(null);
+                    setEditingPermission(null);
                     reset();
                 },
             });
         } else {
-            post(route('admin.roles.store'), {
+            post(route('admin.permissions.store'), {
                 onSuccess: () => {
                     reset();
                     setIsCreating(false);
@@ -85,11 +94,11 @@ export default function Index({ roles, filters, allPermissions }: IndexProps) {
     };
 
     const handleDelete = (id: number) => {
-        if (confirm('Are you sure you want to delete this role?')) {
-            destroy(route('admin.roles.destroy', id), {
+        if (confirm('Are you sure you want to delete this permission?')) {
+            destroy(route('admin.permissions.destroy', id), {
                 onSuccess: () => {
-                    if (editingRole?.id === id) {
-                        setEditingRole(null);
+                    if (editingPermission?.id === id) {
+                        setEditingPermission(null);
                         reset();
                     }
                 },
@@ -98,7 +107,7 @@ export default function Index({ roles, filters, allPermissions }: IndexProps) {
     };
 
     const handleCancel = () => {
-        setEditingRole(null);
+        setEditingPermission(null);
         setIsCreating(false);
         reset();
     };
@@ -108,19 +117,19 @@ export default function Index({ roles, filters, allPermissions }: IndexProps) {
             header={
                 <div className="flex items-center justify-between">
                     <h2 className="text-xl font-semibold text-white tracking-tight">
-                        Roles
+                        Permissions
                     </h2>
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-3 text-sm">
                             <span className="text-slate-400">
-                                {roles.total} {roles.total === 1 ? 'Role' : 'Roles'}
+                                {permissions.total} {permissions.total === 1 ? 'Permission' : 'Permissions'}
                             </span>
                         </div>
                     </div>
                 </div>
             }
         >
-            <Head title="Roles" />
+            <Head title="Permissions" />
 
             <div className="py-8">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
@@ -130,137 +139,97 @@ export default function Index({ roles, filters, allPermissions }: IndexProps) {
                             <Card className="bg-[#0f0f10] border-slate-800/50 shadow-xl sticky top-4">
                                 <CardHeader className="pb-4">
                                     <CardTitle className="text-white text-lg flex items-center gap-2">
-                                        {editingRole ? (
+                                        {editingPermission ? (
                                             <>
                                                 <Edit2 className="w-5 h-5 text-indigo-400" />
-                                                Edit Role
+                                                Edit Permission
                                             </>
                                         ) : (
                                             <>
                                                 <Plus className="w-5 h-5 text-indigo-400" />
-                                                {isCreating ? 'Create New Role' : 'Add Role'}
+                                                {isCreating ? 'Create New Permission' : 'Add Permission'}
                                             </>
                                         )}
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    {!isCreating && !editingRole ? (
+                                    {!isCreating && !editingPermission ? (
                                         <Button
                                             onClick={handleCreate}
                                             className="w-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 rounded-xl gap-2"
                                         >
                                             <Plus className="w-4 h-4" />
-                                            Create Role
+                                            Create Permission
                                         </Button>
                                     ) : (
                                         <form onSubmit={handleSubmit} className="space-y-4">
                                             <div>
                                                 <label
-                                                    htmlFor="code"
+                                                    htmlFor="permission_name"
                                                     className="block text-sm font-medium text-slate-300 mb-1.5"
                                                 >
-                                                    Code
+                                                    Permission Name
                                                 </label>
                                                 <Input
-                                                    id="code"
+                                                    id="permission_name"
                                                     type="text"
-                                                    value={data.code}
+                                                    value={data.permission_name}
                                                     onChange={(e) =>
-                                                        setData('code', e.target.value)
+                                                        setData('permission_name', e.target.value)
                                                     }
-                                                    placeholder="e.g., ADMIN, USER, MANAGER"
+                                                    placeholder="e.g., create-users, edit-tasks"
                                                     className="bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50 focus:ring-indigo-500/20"
                                                 />
-                                                {errors.code && (
+                                                {errors.permission_name && (
                                                     <p className="mt-1.5 text-sm text-rose-400">
-                                                        {errors.code}
+                                                        {errors.permission_name}
                                                     </p>
                                                 )}
                                             </div>
 
                                             <div>
                                                 <label
-                                                    htmlFor="name"
+                                                    htmlFor="display_name"
                                                     className="block text-sm font-medium text-slate-300 mb-1.5"
                                                 >
-                                                    Name
+                                                    Display Name
                                                 </label>
                                                 <Input
-                                                    id="name"
+                                                    id="display_name"
                                                     type="text"
-                                                    value={data.name}
+                                                    value={data.display_name}
                                                     onChange={(e) =>
-                                                        setData('name', e.target.value)
+                                                        setData('display_name', e.target.value)
                                                     }
-                                                    placeholder="e.g., Administrator"
+                                                    placeholder="e.g., Create Users, Edit Tasks"
                                                     className="bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50 focus:ring-indigo-500/20"
                                                 />
-                                                {errors.name && (
+                                                {errors.display_name && (
                                                     <p className="mt-1.5 text-sm text-rose-400">
-                                                        {errors.name}
+                                                        {errors.display_name}
                                                     </p>
                                                 )}
                                             </div>
 
                                             <div>
                                                 <label
-                                                    htmlFor="slug"
+                                                    htmlFor="description"
                                                     className="block text-sm font-medium text-slate-300 mb-1.5"
                                                 >
-                                                    Slug (optional)
+                                                    Description (optional)
                                                 </label>
-                                                <Input
-                                                    id="slug"
-                                                    type="text"
-                                                    value={data.slug}
+                                                <Textarea
+                                                    id="description"
+                                                    value={data.description}
                                                     onChange={(e) =>
-                                                        setData('slug', e.target.value)
+                                                        setData('description', e.target.value)
                                                     }
-                                                    placeholder="e.g., administrator"
-                                                    className="bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50 focus:ring-indigo-500/20"
+                                                    placeholder="Describe what this permission allows..."
+                                                    className="bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50 focus:ring-indigo-500/20 min-h-[100px]"
                                                 />
-                                                {errors.slug && (
+                                                {errors.description && (
                                                     <p className="mt-1.5 text-sm text-rose-400">
-                                                        {errors.slug}
-                                                    </p>
-                                                )}
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-300 mb-3">
-                                                    Permissions
-                                                </label>
-                                                <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                                                    {allPermissions.map((permission) => (
-                                                        <div
-                                                            key={permission.id}
-                                                            className="flex items-center space-x-3 p-2 rounded-lg hover:bg-slate-800/50 transition-colors"
-                                                        >
-                                                            <Checkbox
-                                                                id={`permission-${permission.id}`}
-                                                                checked={data.permissions.includes(permission.id)}
-                                                                onCheckedChange={(checked) => {
-                                                                    if (checked) {
-                                                                        setData('permissions', [...data.permissions, permission.id]);
-                                                                    } else {
-                                                                        setData('permissions', data.permissions.filter(id => id !== permission.id));
-                                                                    }
-                                                                }}
-                                                                className="border-slate-600 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
-                                                            />
-                                                            <label
-                                                                htmlFor={`permission-${permission.id}`}
-                                                                className="text-sm text-slate-300 cursor-pointer flex-1"
-                                                            >
-                                                                <span className="font-medium">{permission.display_name}</span>
-                                                                <span className="text-slate-500 ml-2">({permission.permission_name})</span>
-                                                            </label>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                {errors.permissions && (
-                                                    <p className="mt-1.5 text-sm text-rose-400">
-                                                        {errors.permissions}
+                                                        {errors.description}
                                                     </p>
                                                 )}
                                             </div>
@@ -278,7 +247,7 @@ export default function Index({ roles, filters, allPermissions }: IndexProps) {
                                                     ) : (
                                                         <Save className="w-4 h-4" />
                                                     )}
-                                                    {editingRole ? 'Update' : 'Create'}
+                                                    {editingPermission ? 'Update' : 'Create'}
                                                 </Button>
                                                 <Button
                                                     type="button"
@@ -302,13 +271,13 @@ export default function Index({ roles, filters, allPermissions }: IndexProps) {
                                     <div className="flex items-center justify-between">
                                         <CardTitle className="text-white text-lg flex items-center gap-2">
                                             <Shield className="w-5 h-5 text-indigo-400" />
-                                            All Roles
+                                            All Permissions
                                         </CardTitle>
                                         <div className="relative">
                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                             <Input
                                                 type="text"
-                                                placeholder="Search roles..."
+                                                placeholder="Search permissions..."
                                                 value={searchQuery}
                                                 onChange={(e) => handleSearch(e.target.value)}
                                                 className="pl-9 bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50 focus:ring-indigo-500/20 w-64"
@@ -317,16 +286,16 @@ export default function Index({ roles, filters, allPermissions }: IndexProps) {
                                     </div>
                                 </CardHeader>
                                 <CardContent>
-                                    {roles.data.length === 0 ? (
+                                    {permissions.data.length === 0 ? (
                                         <div className="text-center py-12">
                                             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800/50 flex items-center justify-center">
                                                 <Shield className="w-8 h-8 text-slate-600" />
                                             </div>
                                             <p className="text-slate-500 text-lg">
-                                                {searchQuery ? 'No roles found' : 'No roles yet'}
+                                                {searchQuery ? 'No permissions found' : 'No permissions yet'}
                                             </p>
                                             <p className="text-slate-600 text-sm mt-1">
-                                                {searchQuery ? 'Try a different search term' : 'Create your first role to get started'}
+                                                {searchQuery ? 'Try a different search term' : 'Create your first permission to get started'}
                                             </p>
                                         </div>
                                     ) : (
@@ -335,50 +304,36 @@ export default function Index({ roles, filters, allPermissions }: IndexProps) {
                                                 <table className="w-full">
                                                     <thead>
                                                         <tr className="border-b border-slate-800">
-                                                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Code</th>
-                                                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Name</th>
-                                                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Permissions</th>
+                                                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Permission Name</th>
+                                                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Display Name</th>
+                                                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Description</th>
                                                             <th className="text-right py-3 px-4 text-sm font-medium text-slate-400">Actions</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {roles.data.map((role) => (
+                                                        {permissions.data.map((permission) => (
                                                             <tr
-                                                                key={role.id}
+                                                                key={permission.id}
                                                                 className={cn(
                                                                     "border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors",
-                                                                    editingRole?.id === role.id && "bg-indigo-500/10"
+                                                                    editingPermission?.id === permission.id && "bg-indigo-500/10"
                                                                 )}
                                                             >
                                                                 <td className="py-3 px-4">
-                                                                    <span className="font-medium text-slate-200">{role.code}</span>
+                                                                    <span className="font-medium text-slate-200">{permission.permission_name}</span>
                                                                 </td>
                                                                 <td className="py-3 px-4">
-                                                                    <span className="text-slate-300">{role.name}</span>
+                                                                    <span className="text-slate-300">{permission.display_name}</span>
                                                                 </td>
                                                                 <td className="py-3 px-4">
-                                                                    {role.permissions && role.permissions.length > 0 ? (
-                                                                        <div className="flex flex-wrap gap-1">
-                                                                            {role.permissions.map((permission) => (
-                                                                                <Badge
-                                                                                    key={permission.id}
-                                                                                    variant="outline"
-                                                                                    className="bg-indigo-500/10 text-indigo-300 border-indigo-500/30 text-xs"
-                                                                                >
-                                                                                    {permission.display_name}
-                                                                                </Badge>
-                                                                            ))}
-                                                                        </div>
-                                                                    ) : (
-                                                                        <span className="text-slate-500 text-sm">No permissions</span>
-                                                                    )}
+                                                                    <span className="text-slate-400 text-sm line-clamp-1">{permission.description || '-'}</span>
                                                                 </td>
                                                                 <td className="py-3 px-4 text-right">
                                                                     <div className="flex items-center justify-end gap-2">
                                                                         <Button
                                                                             variant="ghost"
                                                                             size="icon"
-                                                                            onClick={() => handleEdit(role)}
+                                                                            onClick={() => handleEdit(permission)}
                                                                             className="text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 h-8 w-8"
                                                                         >
                                                                             <Edit2 className="w-4 h-4" />
@@ -386,7 +341,7 @@ export default function Index({ roles, filters, allPermissions }: IndexProps) {
                                                                         <Button
                                                                             variant="ghost"
                                                                             size="icon"
-                                                                            onClick={() => handleDelete(role.id)}
+                                                                            onClick={() => handleDelete(permission.id)}
                                                                             className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 h-8 w-8"
                                                                         >
                                                                             <Trash2 className="w-4 h-4" />
@@ -400,29 +355,29 @@ export default function Index({ roles, filters, allPermissions }: IndexProps) {
                                             </div>
 
                                             {/* Pagination */}
-                                            {roles.last_page > 1 && (
+                                            {permissions.last_page > 1 && (
                                                 <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-800">
                                                     <div className="text-sm text-slate-400">
-                                                        Showing {roles.from} to {roles.to} of {roles.total} roles
+                                                        Showing {permissions.from} to {permissions.to} of {permissions.total} permissions
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
-                                                            onClick={() => router.get(route('admin.roles.index'), { page: roles.current_page - 1, search: searchQuery })}
-                                                            disabled={roles.current_page === 1}
+                                                            onClick={() => router.get(route('admin.permissions.index'), { page: permissions.current_page - 1, search: searchQuery })}
+                                                            disabled={permissions.current_page === 1}
                                                             className="border-slate-700 text-slate-300 hover:bg-slate-800/50 hover:text-white"
                                                         >
                                                             Previous
                                                         </Button>
                                                         <span className="text-sm text-slate-400">
-                                                            Page {roles.current_page} of {roles.last_page}
+                                                            Page {permissions.current_page} of {permissions.last_page}
                                                         </span>
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
-                                                            onClick={() => router.get(route('admin.roles.index'), { page: roles.current_page + 1, search: searchQuery })}
-                                                            disabled={roles.current_page === roles.last_page}
+                                                            onClick={() => router.get(route('admin.permissions.index'), { page: permissions.current_page + 1, search: searchQuery })}
+                                                            disabled={permissions.current_page === permissions.last_page}
                                                             className="border-slate-700 text-slate-300 hover:bg-slate-800/50 hover:text-white"
                                                         >
                                                             Next

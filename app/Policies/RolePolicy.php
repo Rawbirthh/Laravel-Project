@@ -10,21 +10,21 @@ class RolePolicy
 {
     public function view(User $user, Role $role): bool
     {
-        return true;
+        return $user->hasPermission('create.roles');
     }
 
     public function create(User $user): bool
     {
-        return $user->isAdmin();
+        return $user->hasPermission('create.roles');
     }
 
     public function update(User $user, Role $role): bool
     {
-        return $user->isAdmin();
+        return $user->hasPermission('update.roles');
     }
 
     public function delete(User $user, Role $role): bool
     {
-        return $user->isAdmin();
+        return $user->hasPermission('delete.roles');
     }
 }

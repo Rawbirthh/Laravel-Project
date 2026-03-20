@@ -12,16 +12,16 @@ class TaskPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->hasRole('manager') || $user->hasRole('employee');
+        return $user->hasPermission('view.tasks');
     }
 
-    public function view(User $user, Task $task): bool
+    public function view(User $user): bool
     {
-        if ($user->hasRole('manager') && $task->assigned_by === $user->id) {
+        if ($user->hasPermission('view.all-employee.task')) {
             return true;
         }
 
-        if ($user->hasRole('employee') && $task->assigned_to === $user->id) {
+        if ($user->hasPermission('view.my-own.task')) {
             return true;
         }
 
@@ -30,7 +30,7 @@ class TaskPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasRole('manager');
+        return $user->hasPermission('create.tasks');
     }
 
     public function update(User $user, Task $task): bool
