@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Task;
 use App\Models\User;
+use App\Models\TaskStatus;
+use App\Models\TaskPriority;
+use App\Models\TaskType;
 use App\Services\TaskService;
 use App\Services\NotificationService;
 use App\Http\Requests\StoreTaskRequest;
@@ -28,7 +31,11 @@ class TaskController extends Controller
     {
         $this->authorize('view', Task::class);
         $user = auth()->user();
-        $filters = $request->only(['status', 'priority', 'assigned_to']);
+        $filters = $request->only(['status_id', 'priority_id', 'type_id', 'assigned_to', 'search']);
+
+        $statuses = TaskStatus::orderBy('name')->get(['id', 'name']);
+        $priorities = TaskPriority::orderBy('name')->get(['id', 'name']);
+        $types = TaskType::orderBy('name')->get(['id', 'name']);
 
         if ($user->hasPermission('view.all-employee.task')) {
             $tasks = $this->taskService->getTasksAssignedBy($user, $filters);
@@ -40,6 +47,9 @@ class TaskController extends Controller
                 'employees' => $employees,
                 'stats' => $stats,
                 'filters' => $filters,
+                'statuses' => $statuses,
+                'priorities' => $priorities,
+                'types' => $types,
             ]);
         }
 
@@ -50,6 +60,9 @@ class TaskController extends Controller
             'tasks' => $tasks,
             'stats' => $stats,
             'filters' => $filters,
+            'statuses' => $statuses,
+            'priorities' => $priorities,
+            'types' => $types,
         ]);
     }
 
@@ -58,9 +71,13 @@ class TaskController extends Controller
         $this->authorize('create', Task::class);
 
         $employees = $this->taskService->getAssignableEmployees(auth()->user());
+        $priorities = TaskPriority::orderBy('name')->get(['id', 'name']);
+        $types = TaskType::orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('Manager/Tasks/Create', [
             'employees' => $employees,
+            'priorities' => $priorities,
+            'types' => $types,
         ]);
     }
 
@@ -78,7 +95,7 @@ class TaskController extends Controller
     {
         $this->authorize('view', $task);
 
-        $task->load(['assignee', 'assigner', 'department']);
+        $task->load(['assignee', 'assigner', 'department', 'taskStatus', 'taskPriority', 'taskType']);
 
         return Inertia::render('Tasks/Show', [
             'task' => $task,
@@ -91,10 +108,16 @@ class TaskController extends Controller
 
         $task->load(['assignee']);
         $employees = $this->taskService->getAssignableEmployees(auth()->user());
+        $statuses = TaskStatus::orderBy('name')->get(['id', 'name']);
+        $priorities = TaskPriority::orderBy('name')->get(['id', 'name']);
+        $types = TaskType::orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('Manager/Tasks/Edit', [
             'task' => $task,
             'employees' => $employees,
+            'statuses' => $statuses,
+            'priorities' => $priorities,
+            'types' => $types,
         ]);
     }
 
@@ -112,10 +135,10 @@ class TaskController extends Controller
     {
         $this->authorize('updateStatus', $task);
 
-        $oldStatus = $task->status;
-        $this->taskService->updateTaskStatus($task, $request->status);
+        $oldStatus = $task->taskStatus->name;
+        $this->taskService->updateTaskStatus($task, $request->status_id);
 
-        $this->notificationService->notifyTaskStatusChanged($task, $oldStatus, $request->status);
+        $this->notificationService->notifyTaskStatusChanged($task, $oldStatus, $request->status_id);
 
         return redirect()->back()
             ->with('success', 'Task status updated!');

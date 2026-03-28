@@ -1,16 +1,21 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, usePage, router } from '@inertiajs/react';
+import { useState } from 'react';
 import { 
     TrendingUp,
     Users,
     MessageSquare,
-    MoreHorizontal
+    MoreHorizontal,
+    Search
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { PaginatedResponse, SearchFilter } from '@/types/index';
+import type { User } from '@/types';
 
 const stats = [
     { label: 'Total Views', value: '24.5K', change: '+12%', trend: 'up' },
@@ -24,8 +29,22 @@ const recentActivity = [
     { user: 'Emma Wilson', action: 'liked your photo', time: '1 hour ago', avatar: '/avatars/emma.jpg' },
 ];
 
-export default function Dashboard() {
+interface DashboardProps {
+    users: PaginatedResponse<User>;
+    filters: SearchFilter;
+}
+
+export default function Dashboard({ users, filters }: DashboardProps) {
     const { auth } = usePage().props as any;
+    const [searchQuery, setSearchQuery] = useState(filters.search);
+
+    const handleSearch = (value: string) => {
+        setSearchQuery(value);
+        router.get(route('admin.dashboard'), { search: value }, {
+            preserveState: true,
+            replace: true,
+        });
+    };
 
     return (
         <AuthenticatedLayout
@@ -71,42 +90,104 @@ export default function Dashboard() {
 
                 {/* Main Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Activity Feed */}
+                    {/* Users List */}
                     <Card className="lg:col-span-2 bg-slate-900/50 border-slate-800/50">
                         <CardHeader className="pb-4">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <CardTitle className="text-white text-lg">Recent Activity</CardTitle>
-                                    <CardDescription className="text-slate-400">Latest interactions from your network</CardDescription>
+                                    <CardTitle className="text-white text-lg">Users ({users.total})</CardTitle>
+                                    <CardDescription className="text-slate-400">All registered users</CardDescription>
                                 </div>
-                                <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white">
-                                    View all
-                                </Button>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                    <Input
+                                        type="text"
+                                        placeholder="Search users..."
+                                        value={searchQuery}
+                                        onChange={(e) => handleSearch(e.target.value)}
+                                        className="pl-9 bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50 focus:ring-indigo-500/20 w-64"
+                                    />
+                                </div>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {recentActivity.map((activity, idx) => (
-                                <div 
-                                    key={idx} 
-                                    className="flex items-center gap-4 p-3 rounded-xl hover:bg-slate-800/30 transition-colors group cursor-pointer"
-                                >
-                                    <Avatar className="w-10 h-10 border-2 border-slate-800 group-hover:border-indigo-500/30 transition-colors">
-                                        <AvatarImage src={activity.avatar} />
-                                        <AvatarFallback className="bg-slate-700 text-white">
-                                            {activity.user.charAt(0)}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm text-white font-medium truncate">
-                                            {activity.user} <span className="text-slate-400 font-normal">{activity.action}</span>
-                                        </p>
-                                        <p className="text-xs text-slate-500 mt-0.5">{activity.time}</p>
+                            {users.data.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800/50 flex items-center justify-center">
+                                        <Users className="w-8 h-8 text-slate-600" />
                                     </div>
-                                    <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white">
-                                        <MoreHorizontal className="w-4 h-4" />
-                                    </Button>
+                                    <p className="text-slate-500 text-lg">
+                                        {searchQuery ? 'No users found' : 'No users yet'}
+                                    </p>
+                                    <p className="text-slate-600 text-sm mt-1">
+                                        {searchQuery ? 'Try a different search term' : 'Users will appear here'}
+                                    </p>
                                 </div>
-                            ))}
+                            ) : (
+                                <>
+                                    {users.data.map((user: any) => (
+                                        <div 
+                                            key={user.id} 
+                                            className="flex items-center gap-4 p-3 rounded-xl hover:bg-slate-800/30 transition-colors group cursor-pointer"
+                                        >
+                                            <Avatar className="w-10 h-10 border-2 border-slate-800 group-hover:border-indigo-500/30 transition-colors">
+                                                <AvatarImage src={user.profile_picture_url} />
+                                                <AvatarFallback className="bg-slate-700 text-white">
+                                                    {user.name.charAt(0)}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm text-white font-medium truncate">
+                                                    {user.name}
+                                                </p>
+                                                <p className="text-xs text-slate-500 mt-0.5">{user.email}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                {user.roles?.map((role: any) => (
+                                                    <Badge key={role.id} variant="secondary" className="bg-indigo-500/10 text-indigo-400 border-0 text-xs">
+                                                        {role.name}
+                                                    </Badge>
+                                                ))}
+                                            </div>
+                                            <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white">
+                                                <MoreHorizontal className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    ))}
+
+                                    {/* Pagination */}
+                                    {users.last_page > 1 && (
+                                        <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-800">
+                                            <div className="text-sm text-slate-400">
+                                                Showing {users.from} to {users.to} of {users.total} users
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => router.get(route('admin.dashboard'), { page: users.current_page - 1, search: searchQuery })}
+                                                    disabled={users.current_page === 1}
+                                                    className="border-slate-700 text-slate-300 hover:bg-slate-800/50 hover:text-white"
+                                                >
+                                                    Previous
+                                                </Button>
+                                                <span className="text-sm text-slate-400">
+                                                    Page {users.current_page} of {users.last_page}
+                                                </span>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => router.get(route('admin.dashboard'), { page: users.current_page + 1, search: searchQuery })}
+                                                    disabled={users.current_page === users.last_page}
+                                                    className="border-slate-700 text-slate-300 hover:bg-slate-800/50 hover:text-white"
+                                                >
+                                                    Next
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )}
                         </CardContent>
                     </Card>
 

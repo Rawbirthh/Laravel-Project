@@ -1,4 +1,4 @@
-import type { Task, TaskStats } from '@/types/Task';
+import type { Task, TaskStats, TaskStatus, TaskPriority, TaskType } from '@/types/Task';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
@@ -20,24 +20,29 @@ interface Props {
         links: { url: string | null; label: string; active: boolean }[];
     };
     stats: TaskStats;
-    filters: { status?: string; priority?: string };
+    filters: { status_id?: string; priority_id?: string; type_id?: string };
+    statuses: TaskStatus[];
+    priorities: TaskPriority[];
+    types: TaskType[];
 }
 
-export default function EmployeeTasksIndex({ tasks, stats, filters }: Props) {
-    const [statusFilter, setStatusFilter] = useState(filters.status || '');
-    const [priorityFilter, setPriorityFilter] = useState(filters.priority || '');
+export default function EmployeeTasksIndex({ tasks, stats, filters, statuses, priorities, types }: Props) {
+    const [statusFilter, setStatusFilter] = useState(filters.status_id || '');
+    const [priorityFilter, setPriorityFilter] = useState(filters.priority_id || '');
+    const [typeFilter, setTypeFilter] = useState(filters.type_id || '');
     const [updatingTaskId, setUpdatingTaskId] = useState<number | null>(null);
 
     const applyFilters = () => {
         router.get(route('employee.tasks.index'), {
-            status: statusFilter || undefined,
-            priority: priorityFilter || undefined,
+            status_id: statusFilter || undefined,
+            priority_id: priorityFilter || undefined,
+            type_id: typeFilter || undefined,
         }, { preserveState: true });
     };
 
-    const handleStatusUpdate = (taskId: number, status: string) => {
+    const handleStatusUpdate = (taskId: number, statusId: number) => {
         setUpdatingTaskId(taskId);
-        router.put(route('employee.tasks.update-status', taskId), { status }, {
+        router.put(route('employee.tasks.update-status', taskId), { status_id: statusId }, {
             onFinish: () => setUpdatingTaskId(null),
             preserveScroll: true,
         });
@@ -129,18 +134,27 @@ export default function EmployeeTasksIndex({ tasks, stats, filters }: Props) {
                                     <label className="text-xs text-slate-400 mb-1 block">Status</label>
                                     <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full bg-slate-900/50 border-slate-800 text-slate-200 rounded-md px-3 py-2 text-sm">
                                         <option value="">All Statuses</option>
-                                        <option value="pending">Pending</option>
-                                        <option value="in_progress">In Progress</option>
-                                        <option value="completed">Completed</option>
+                                        {statuses.map((status) => (
+                                            <option key={status.id} value={status.id.toString()}>{status.name}</option>
+                                        ))}
                                     </select>
                                 </div>
                                 <div className="flex-1 min-w-[200px]">
                                     <label className="text-xs text-slate-400 mb-1 block">Priority</label>
                                     <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} className="w-full bg-slate-900/50 border-slate-800 text-slate-200 rounded-md px-3 py-2 text-sm">
                                         <option value="">All Priorities</option>
-                                        <option value="low">Low</option>
-                                        <option value="medium">Medium</option>
-                                        <option value="high">High</option>
+                                        {priorities.map((priority) => (
+                                            <option key={priority.id} value={priority.id.toString()}>{priority.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="flex-1 min-w-[200px]">
+                                    <label className="text-xs text-slate-400 mb-1 block">Type</label>
+                                    <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="w-full bg-slate-900/50 border-slate-800 text-slate-200 rounded-md px-3 py-2 text-sm">
+                                        <option value="">All Types</option>
+                                        {types.map((type) => (
+                                            <option key={type.id} value={type.id.toString()}>{type.name}</option>
+                                        ))}
                                     </select>
                                 </div>
                                 <Button onClick={applyFilters} className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2">
@@ -161,9 +175,8 @@ export default function EmployeeTasksIndex({ tasks, stats, filters }: Props) {
                             </Card>
                         ) : (
                             tasks.data.map((task) => {
-                                const overdue = isOverdue(task.due_date, task.status);
+                                const overdue = isOverdue(task.due_date, task.task_status?.name || '');
                                 const isUpdating = updatingTaskId === task.id;
-                                // Extract other assignee names
                                 const otherAssignees = task.other_group_assignees
                                     ?.map(t => t.assignee?.name)
                                     .filter(Boolean) || [];
@@ -175,11 +188,11 @@ export default function EmployeeTasksIndex({ tasks, stats, filters }: Props) {
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-3 mb-2">
                                                         <h3 className="font-semibold text-white truncate">{task.title}</h3>
-                                                        <span className={cn("px-2 py-0.5 rounded text-xs font-medium border capitalize shrink-0", getStatusColor(task.status))}>
-                                                            {task.status.replace('_', ' ')}
+                                                        <span className={cn("px-2 py-0.5 rounded text-xs font-medium border shrink-0", getStatusColor(task.task_status?.name || ''))}>
+                                                            {task.task_status?.name || 'Unknown'}
                                                         </span>
-                                                        <span className={cn("px-2 py-0.5 rounded text-xs font-medium border capitalize shrink-0", getPriorityColor(task.priority))}>
-                                                            {task.priority}
+                                                        <span className={cn("px-2 py-0.5 rounded text-xs font-medium border shrink-0", getPriorityColor(task.task_priority?.name || ''))}>
+                                                            {task.task_priority?.name || 'Unknown'}
                                                         </span>
                                                     </div>
 
@@ -217,15 +230,15 @@ export default function EmployeeTasksIndex({ tasks, stats, filters }: Props) {
 
                                                 {/* Status Actions */}
                                                 <div className="flex items-center gap-2 shrink-0">
-                                                    {task.status !== 'completed' && (
+                                                    {task.task_status?.name !== 'completed' && (
                                                         <>
-                                                            {task.status === 'pending' && (
-                                                                <Button size="sm" variant="outline" onClick={() => handleStatusUpdate(task.id, 'in_progress')} disabled={isUpdating} className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10 gap-1">
+                                                            {task.task_status?.name === 'pending' && (
+                                                                <Button size="sm" variant="outline" onClick={() => handleStatusUpdate(task.id, statuses.find(s => s.name === 'in_progress')?.id || 0)} disabled={isUpdating} className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10 gap-1">
                                                                     <Play className="w-3 h-3" /> Start
                                                                 </Button>
                                                             )}
-                                                            {task.status === 'in_progress' && (
-                                                                <Button size="sm" variant="outline" onClick={() => handleStatusUpdate(task.id, 'completed')} disabled={isUpdating} className="border-green-500/30 text-green-400 hover:bg-green-500/10 gap-1">
+                                                            {task.task_status?.name === 'in_progress' && (
+                                                                <Button size="sm" variant="outline" onClick={() => handleStatusUpdate(task.id, statuses.find(s => s.name === 'completed')?.id || 0)} disabled={isUpdating} className="border-green-500/30 text-green-400 hover:bg-green-500/10 gap-1">
                                                                     <CheckSquare className="w-3 h-3" /> Complete
                                                                 </Button>
                                                             )}

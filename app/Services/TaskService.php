@@ -23,14 +23,15 @@ class TaskService
     public function createTask(array $data, User $manager): void
     {
         $departmentId = $manager->departments()->first()?->id;
-        
+
         $groupId = count($data['assigned_to']) > 1 ? Str::random(10) : null;
-        
+
         $baseData = [
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
-            'status' => 'pending',
-            'priority' => $data['priority'] ?? 'medium',
+            'status_id' => $data['status_id'] ?? 1,
+            'priority_id' => $data['priority_id'],
+            'type_id' => $data['type_id'] ?? null,
             'due_date' => $data['due_date'] ?? null,
             'assigned_by' => $manager->id,
             'department_id' => $departmentId,
@@ -53,9 +54,9 @@ class TaskService
         return $task->fresh();
     }
 
-    public function updateTaskStatus(Task $task, string $status): Task
+    public function updateTaskStatus(Task $task, int $statusId): Task
     {
-        $task->update(['status' => $status]);
+        $task->update(['status_id' => $statusId]);
         return $task->fresh();
     }
 
@@ -66,7 +67,7 @@ class TaskService
 
     public function getTasksAssignedBy(User $manager, array $filters = []): LengthAwarePaginator
     {
-        $query = Task::with(['assignee', 'department', 'otherGroupAssignees'])
+        $query = Task::with(['assignee', 'department', 'otherGroupAssignees', 'taskStatus', 'taskPriority', 'taskType'])
             ->where('assigned_by', $manager->id)
             ->where(function ($q) {
                 $q->whereNull('group_id')
@@ -78,30 +79,43 @@ class TaskService
                   });
             });
 
-        if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+        if (!empty($filters['search'])) {
+            $query->where(function ($q) use ($filters) {
+                $q->where('title', 'like', "%{$filters['search']}%")
+                  ->orWhere('description', 'like', "%{$filters['search']}%");
+            });
         }
-        if (!empty($filters['priority'])) {
-            $query->where('priority', $filters['priority']);
+        if (!empty($filters['status_id'])) {
+            $query->where('status_id', $filters['status_id']);
+        }
+        if (!empty($filters['priority_id'])) {
+            $query->where('priority_id', $filters['priority_id']);
+        }
+        if (!empty($filters['type_id'])) {
+            $query->where('type_id', $filters['type_id']);
         }
         if (!empty($filters['assigned_to'])) {
             $query->where('assigned_to', $filters['assigned_to']);
         }
 
-        return $query->latest()->paginate(10);
+        return $query->latest()->paginate(10)->withQueryString();
     }
 
     public function getTasksAssignedTo(User $employee, array $filters = []): LengthAwarePaginator
     {
-        $query = Task::with(['assigner', 'department', 'otherGroupAssignees.assignee'])
+        $query = Task::with(['assigner', 'department', 'otherGroupAssignees.assignee', 'taskStatus', 'taskPriority', 'taskType'])
             ->where('assigned_to', $employee->id);
 
-        if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+        if (!empty($filters['status_id'])) {
+            $query->where('status_id', $filters['status_id']);
         }
 
-        if (!empty($filters['priority'])) {
-            $query->where('priority', $filters['priority']);
+        if (!empty($filters['priority_id'])) {
+            $query->where('priority_id', $filters['priority_id']);
+        }
+
+        if (!empty($filters['type_id'])) {
+            $query->where('type_id', $filters['type_id']);
         }
 
         return $query->latest()->paginate(10);
@@ -114,26 +128,31 @@ class TaskService
 
     public function getManagerTaskStats(User $manager): array
     {
-        $baseQuery = Task::where('assigned_by', $manager->id);
+        $tasks = Task::where('assigned_by', $manager->id)->with('taskStatus', 'taskPriority')->get();
+
+        $statusCounts = $tasks->pluck('taskStatus.name')->countBy();
+        $priorityCounts = $tasks->pluck('taskPriority.name')->countBy();
 
         return [
-            'total' => $baseQuery->count(),
-            'pending' => (clone $baseQuery)->where('status', 'pending')->count(),
-            'in_progress' => (clone $baseQuery)->where('status', 'in_progress')->count(),
-            'completed' => (clone $baseQuery)->where('status', 'completed')->count(),
-            'high_priority' => (clone $baseQuery)->where('priority', 'high')->count(),
+            'total' => $tasks->count(),
+            'pending' => $statusCounts->get('Pending', 0),
+            'in_progress' => $statusCounts->get('In Progress', 0),
+            'completed' => $statusCounts->get('Completed', 0),
+            'high_priority' => $priorityCounts->get('High', 0),
         ];
     }
 
     public function getEmployeeTaskStats(User $employee): array
     {
-        $baseQuery = Task::where('assigned_to', $employee->id);
+        $tasks = Task::where('assigned_to', $employee->id)->with('taskStatus')->get();
+
+        $statusCounts = $tasks->pluck('taskStatus.name')->countBy();
 
         return [
-            'total' => $baseQuery->count(),
-            'pending' => (clone $baseQuery)->where('status', 'pending')->count(),
-            'in_progress' => (clone $baseQuery)->where('status', 'in_progress')->count(),
-            'completed' => (clone $baseQuery)->where('status', 'completed')->count(),
+            'total' => $tasks->count(),
+            'pending' => $statusCounts->get('Pending', 0),
+            'in_progress' => $statusCounts->get('In Progress', 0),
+            'completed' => $statusCounts->get('Completed', 0),
         ];
     }
 }

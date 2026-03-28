@@ -8,6 +8,9 @@ import {
     Settings,
     Key,
     Lock,
+    Flag,
+    CheckCircle,
+    List,
     LogOut,
     ChevronRight,
     ChevronLeft,
@@ -48,6 +51,9 @@ export function Sidebar() {
         { label: 'Departments', href: route('admin.departments.index'), icon: Building2, permission: 'create.departments' },
         { label: 'Roles', href: route('admin.roles.index'), icon: Key, permission: 'create.roles' },
         { label: 'Permissions', href: route('admin.permissions.index'), icon: Lock, permission: 'create.permissions' },
+        { label: 'Task Priorities', href: route('admin.task-priorities.index'), icon: Flag, permission: 'create.task-priorities' },
+        { label: 'Task Statuses', href: route('admin.task-statuses.index'), icon: CheckCircle, permission: 'create.task-statuses' },
+        { label: 'Task Types', href: route('admin.task-types.index'), icon: List, permission: 'create.task-types' },
 
         // Settings (Visible to everyone or protected if needed)
         { label: 'Profile', href: route('profile.edit'), icon: Settings },

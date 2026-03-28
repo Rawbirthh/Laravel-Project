@@ -1,13 +1,14 @@
-import type { Task, TaskStats } from '@/types/Task';
+import type { Task, TaskStats, TaskStatus, TaskPriority, TaskType } from '@/types/Task';
 import type { User } from '@/types/User';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import { 
     Plus, ClipboardList, Clock, CheckCircle, AlertTriangle, 
-    Filter, Edit, Trash2, Eye, ChevronDown, Users 
+    Filter, Edit, Trash2, Eye, ChevronDown, Users, Search
 } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
+import { Input } from '@/Components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import UserAvatar from '@/Components/UserAvatar';
 import { cn } from '@/lib/utils';
@@ -20,22 +21,42 @@ interface Props {
         last_page: number;
         per_page: number;
         total: number;
+        from: number;
+        to: number;
         links: { url: string | null; label: string; active: boolean }[];
     };
     employees: User[];
     stats: TaskStats;
-    filters: { status?: string; priority?: string; assigned_to?: string };
+    filters: { status_id?: string; priority_id?: string; type_id?: string; assigned_to?: string; search?: string };
+    statuses: TaskStatus[];
+    priorities: TaskPriority[];
+    types: TaskType[];
 }
 
-export default function ManagerTasksIndex({ tasks, employees, stats, filters }: Props) {
-    const [statusFilter, setStatusFilter] = useState(filters.status || '');
-    const [priorityFilter, setPriorityFilter] = useState(filters.priority || '');
+export default function ManagerTasksIndex({ tasks, employees, stats, filters, statuses, priorities, types }: Props) {
+    const [searchQuery, setSearchQuery] = useState(filters.search || '');
+    const [statusFilter, setStatusFilter] = useState(filters.status_id || '');
+    const [priorityFilter, setPriorityFilter] = useState(filters.priority_id || '');
+    const [typeFilter, setTypeFilter] = useState(filters.type_id || '');
     const [employeeFilter, setEmployeeFilter] = useState(filters.assigned_to || '');
+
+    const handleSearch = (value: string) => {
+        setSearchQuery(value);
+        router.get(route('manager.tasks.index'), {
+            search: value,
+            status_id: statusFilter || undefined,
+            priority_id: priorityFilter || undefined,
+            type_id: typeFilter || undefined,
+            assigned_to: employeeFilter || undefined,
+        }, { preserveState: true, replace: true });
+    };
 
     const applyFilters = () => {
         router.get(route('manager.tasks.index'), {
-            status: statusFilter || undefined,
-            priority: priorityFilter || undefined,
+            search: searchQuery || undefined,
+            status_id: statusFilter || undefined,
+            priority_id: priorityFilter || undefined,
+            type_id: typeFilter || undefined,
             assigned_to: employeeFilter || undefined,
         }, { preserveState: true });
     };
@@ -159,9 +180,9 @@ export default function ManagerTasksIndex({ tasks, employees, stats, filters }: 
                                         className="w-full bg-slate-900/50 border-slate-800 text-slate-200 rounded-md px-3 py-2 text-sm"
                                     >
                                         <option value="">All Statuses</option>
-                                        <option value="pending">Pending</option>
-                                        <option value="in_progress">In Progress</option>
-                                        <option value="completed">Completed</option>
+                                        {statuses.map((status) => (
+                                            <option key={status.id} value={status.id.toString()}>{status.name}</option>
+                                        ))}
                                     </select>
                                 </div>
 
@@ -173,9 +194,23 @@ export default function ManagerTasksIndex({ tasks, employees, stats, filters }: 
                                         className="w-full bg-slate-900/50 border-slate-800 text-slate-200 rounded-md px-3 py-2 text-sm"
                                     >
                                         <option value="">All Priorities</option>
-                                        <option value="low">Low</option>
-                                        <option value="medium">Medium</option>
-                                        <option value="high">High</option>
+                                        {priorities.map((priority) => (
+                                            <option key={priority.id} value={priority.id.toString()}>{priority.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="flex-1 min-w-[200px]">
+                                    <label className="text-xs text-slate-400 mb-1 block">Type</label>
+                                    <select
+                                        value={typeFilter}
+                                        onChange={(e) => setTypeFilter(e.target.value)}
+                                        className="w-full bg-slate-900/50 border-slate-800 text-slate-200 rounded-md px-3 py-2 text-sm"
+                                    >
+                                        <option value="">All Types</option>
+                                        {types.map((type) => (
+                                            <option key={type.id} value={type.id.toString()}>{type.name}</option>
+                                        ))}
                                     </select>
                                 </div>
 
@@ -208,13 +243,26 @@ export default function ManagerTasksIndex({ tasks, employees, stats, filters }: 
                     {/* Tasks Table */}
                     <Card className="bg-[#0f0f10] border-slate-800/50">
                         <CardHeader>
-                            <CardTitle className="text-white">Assigned Tasks</CardTitle>
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-white">Assigned Tasks ({tasks.total})</CardTitle>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                    <Input
+                                        type="text"
+                                        placeholder="Search tasks..."
+                                        value={searchQuery}
+                                        onChange={(e) => handleSearch(e.target.value)}
+                                        className="pl-9 bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50 focus:ring-indigo-500/20 w-64"
+                                    />
+                                </div>
+                            </div>
                         </CardHeader>
                         <CardContent>
                             {tasks.data.length === 0 ? (
                                 <div className="text-center py-12">
                                     <ClipboardList className="w-12 h-12 mx-auto text-slate-600 mb-4" />
-                                    <p className="text-slate-500">No tasks found</p>
+                                    <p className="text-slate-500">{searchQuery ? 'No tasks found' : 'No tasks found'}</p>
+                                    {searchQuery && <p className="text-slate-600 text-sm mt-1">Try a different search term</p>}
                                 </div>
                             ) : (
                                 <div className="overflow-x-auto">
@@ -225,6 +273,7 @@ export default function ManagerTasksIndex({ tasks, employees, stats, filters }: 
                                                 <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Assigned To</th>
                                                 <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Status</th>
                                                 <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Priority</th>
+                                                <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Type</th>
                                                 <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Due Date</th>
                                                 <th className="text-right py-3 px-4 text-sm font-medium text-slate-400">Actions</th>
                                             </tr>
@@ -289,18 +338,23 @@ export default function ManagerTasksIndex({ tasks, employees, stats, filters }: 
 
                                                     <td className="py-3 px-4">
                                                         <span className={cn(
-                                                            "px-2 py-1 rounded text-xs font-medium border capitalize",
-                                                            getStatusColor(task.status)
+                                                            "px-2 py-1 rounded text-xs font-medium border",
+                                                            getStatusColor(task.task_status?.name || '')
                                                         )}>
-                                                            {task.status.replace('_', ' ')}
+                                                            {task.task_status?.name || 'Unknown'}
                                                         </span>
                                                     </td>
                                                     <td className="py-3 px-4">
                                                         <span className={cn(
-                                                            "px-2 py-1 rounded text-xs font-medium border capitalize",
-                                                            getPriorityColor(task.priority)
+                                                            "px-2 py-1 rounded text-xs font-medium border",
+                                                            getPriorityColor(task.task_priority?.name || '')
                                                         )}>
-                                                            {task.priority}
+                                                            {task.task_priority?.name || 'Unknown'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-3 px-4">
+                                                        <span className="text-slate-400 text-sm">
+                                                            {task.task_type?.name || 'Unknown'}
                                                         </span>
                                                     </td>
                                                     <td className="py-3 px-4">
@@ -330,20 +384,47 @@ export default function ManagerTasksIndex({ tasks, employees, stats, filters }: 
 
                             {/* Pagination */}
                             {tasks.last_page > 1 && (
-                                <div className="flex items-center justify-center gap-2 mt-6">
-                                    {tasks.links.map((link, i) => (
+                                <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-800">
+                                    <div className="text-sm text-slate-400">
+                                        Showing {tasks.from} to {tasks.to} of {tasks.total} tasks
+                                    </div>
+                                    <div className="flex items-center gap-2">
                                         <Button
-                                            key={i}
-                                            variant={link.active ? 'default' : 'outline'}
-                                            onClick={() => link.url && router.get(link.url)}
-                                            disabled={!link.url}
-                                            className={cn(
-                                                link.active ? 'bg-indigo-600 hover:bg-indigo-500' : 'border-slate-700 text-slate-300',
-                                                'text-sm'
-                                            )}
-                                            dangerouslySetInnerHTML={{ __html: link.label }}
-                                        />
-                                    ))}
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => router.get(route('manager.tasks.index'), {
+                                                page: tasks.current_page - 1,
+                                                search: searchQuery || undefined,
+                                                status_id: statusFilter || undefined,
+                                                priority_id: priorityFilter || undefined,
+                                                type_id: typeFilter || undefined,
+                                                assigned_to: employeeFilter || undefined,
+                                            })}
+                                            disabled={tasks.current_page === 1}
+                                            className="border-slate-700 text-slate-300 hover:bg-slate-800/50 hover:text-white"
+                                        >
+                                            Previous
+                                        </Button>
+                                        <span className="text-sm text-slate-400">
+                                            Page {tasks.current_page} of {tasks.last_page}
+                                        </span>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => router.get(route('manager.tasks.index'), {
+                                                page: tasks.current_page + 1,
+                                                search: searchQuery || undefined,
+                                                status_id: statusFilter || undefined,
+                                                priority_id: priorityFilter || undefined,
+                                                type_id: typeFilter || undefined,
+                                                assigned_to: employeeFilter || undefined,
+                                            })}
+                                            disabled={tasks.current_page === tasks.last_page}
+                                            className="border-slate-700 text-slate-300 hover:bg-slate-800/50 hover:text-white"
+                                        >
+                                            Next
+                                        </Button>
+                                    </div>
                                 </div>
                             )}
                         </CardContent>

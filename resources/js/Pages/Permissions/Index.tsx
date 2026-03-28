@@ -18,15 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Separator } from '@/Components/ui/separator';
 import { Textarea } from '@/Components/ui/textarea';
 import { PaginatedResponse, SearchFilter } from '@/types/index';
-
-interface Permission {
-    id: number;
-    permission_name: string;
-    display_name: string;
-    description: string | null;
-    created_at: string;
-    updated_at: string;
-}
+import { Permission } from '@/types/Permission';
 
 interface PermissionFormData {
     permission_name: string;
@@ -119,13 +111,6 @@ export default function Index({ permissions, filters }: IndexProps) {
                     <h2 className="text-xl font-semibold text-white tracking-tight">
                         Permissions
                     </h2>
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-3 text-sm">
-                            <span className="text-slate-400">
-                                {permissions.total} {permissions.total === 1 ? 'Permission' : 'Permissions'}
-                            </span>
-                        </div>
-                    </div>
                 </div>
             }
         >
@@ -271,7 +256,7 @@ export default function Index({ permissions, filters }: IndexProps) {
                                     <div className="flex items-center justify-between">
                                         <CardTitle className="text-white text-lg flex items-center gap-2">
                                             <Shield className="w-5 h-5 text-indigo-400" />
-                                            All Permissions
+                                            All Permissions ({permissions.total})
                                         </CardTitle>
                                         <div className="relative">
                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />

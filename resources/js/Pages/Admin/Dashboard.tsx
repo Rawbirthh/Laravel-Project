@@ -1,9 +1,28 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
-import { Users, Shield, Mail, Calendar } from 'lucide-react';
+import { Head, router } from '@inertiajs/react';
+import { useState } from 'react';
+import { Users, Shield, Mail, Calendar, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { PaginatedResponse, SearchFilter } from '@/types/index';
+import type { User } from '@/types';
 
-export default function AdminDashboard({ users }: { users: any[] }) {
+interface AdminDashboardProps {
+    users: PaginatedResponse<User>;
+    filters: SearchFilter;
+}
+
+export default function AdminDashboard({ users, filters }: AdminDashboardProps) {
+    const [searchQuery, setSearchQuery] = useState(filters.search);
+
+    const handleSearch = (value: string) => {
+        setSearchQuery(value);
+        router.get(route('admin.dashboard'), { search: value }, {
+            preserveState: true,
+            replace: true,
+        });
+    };
     return (
         <AuthenticatedLayout
             header={
@@ -27,7 +46,7 @@ export default function AdminDashboard({ users }: { users: any[] }) {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-3xl font-bold text-white">{users.length}</p>
+                                <p className="text-3xl font-bold text-white">{users.total}</p>
                             </CardContent>
                         </Card>
 
@@ -40,7 +59,7 @@ export default function AdminDashboard({ users }: { users: any[] }) {
                             </CardHeader>
                             <CardContent>
                                 <p className="text-3xl font-bold text-white">
-                                    {users.filter((u) => u.roles?.some((r: any) => r.slug === 'admin')).length}
+                                    {users.data.filter((u) => u.roles?.some((r: any) => r.slug === 'admin')).length}
                                 </p>
                             </CardContent>
                         </Card>
@@ -54,7 +73,7 @@ export default function AdminDashboard({ users }: { users: any[] }) {
                             </CardHeader>
                             <CardContent>
                                 <p className="text-3xl font-bold text-white">
-                                    {users.filter((u) => !u.roles?.some((r: any) => r.slug === 'admin')).length}
+                                    {users.data.filter((u) => !u.roles?.some((r: any) => r.slug === 'admin')).length}
                                 </p>
                             </CardContent>
                         </Card>
@@ -62,7 +81,19 @@ export default function AdminDashboard({ users }: { users: any[] }) {
 
                     <Card className="bg-[#0f0f10] border-slate-800/50">
                         <CardHeader>
-                            <CardTitle className="text-white">All Users</CardTitle>
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-white">All Users ({users.total})</CardTitle>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                    <Input
+                                        type="text"
+                                        placeholder="Search users..."
+                                        value={searchQuery}
+                                        onChange={(e) => handleSearch(e.target.value)}
+                                        className="pl-9 bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50 focus:ring-indigo-500/20 w-64"
+                                    />
+                                </div>
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div className="overflow-x-auto">
@@ -76,7 +107,7 @@ export default function AdminDashboard({ users }: { users: any[] }) {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {users.map((user) => (
+                                        {users.data.map((user) => (
                                             <tr key={user.id} className="border-b border-slate-800/30">
                                                 <td className="py-3 px-4 text-slate-200">{user.name}</td>
                                                 <td className="py-3 px-4 text-slate-400 flex items-center gap-2">
@@ -115,6 +146,38 @@ export default function AdminDashboard({ users }: { users: any[] }) {
                                     </tbody>
                                 </table>
                             </div>
+
+                            {/* Pagination */}
+                            {users.last_page > 1 && (
+                                <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-800">
+                                    <div className="text-sm text-slate-400">
+                                        Showing {users.from} to {users.to} of {users.total} users
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => router.get(route('admin.dashboard'), { page: users.current_page - 1, search: searchQuery })}
+                                            disabled={users.current_page === 1}
+                                            className="border-slate-700 text-slate-300 hover:bg-slate-800/50 hover:text-white"
+                                        >
+                                            Previous
+                                        </Button>
+                                        <span className="text-sm text-slate-400">
+                                            Page {users.current_page} of {users.last_page}
+                                        </span>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => router.get(route('admin.dashboard'), { page: users.current_page + 1, search: searchQuery })}
+                                            disabled={users.current_page === users.last_page}
+                                            className="border-slate-700 text-slate-300 hover:bg-slate-800/50 hover:text-white"
+                                        >
+                                            Next
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </div>

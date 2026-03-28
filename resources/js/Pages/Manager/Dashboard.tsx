@@ -1,21 +1,54 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
-import { CheckSquare, TrendingUp, Shield, ClipboardList, Plus, Clock } from 'lucide-react';
+import { useState } from 'react';
+import { CheckSquare, TrendingUp, Shield, ClipboardList, Plus, Clock, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/Components/ui/button';
+import { Input } from '@/Components/ui/input';
 import UserAvatar from '@/Components/UserAvatar';
 import { cn } from '@/lib/utils';
+import { PaginatedResponse, SearchFilter } from '@/types/index';
 import type { Task, TaskStats } from '@/types/Task';
 import type { User } from '@/types/User';
 
 interface Props {
     stats: { employees: number };
     taskStats: TaskStats;
-    users: User[];
-    recentTasks: Task[];
+    users: PaginatedResponse<User>;
+    recentTasks: PaginatedResponse<Task>;
+    filters: {
+        team_search: string;
+        task_search: string;
+    };
 }
 
-export default function ManagerDashboard({ stats, taskStats, users, recentTasks }: Props) {
+export default function ManagerDashboard({ stats, taskStats, users, recentTasks, filters }: Props) {
+    const [teamSearchQuery, setTeamSearchQuery] = useState(filters.team_search);
+    const [taskSearchQuery, setTaskSearchQuery] = useState(filters.task_search);
+
+    const handleTeamSearch = (value: string) => {
+        setTeamSearchQuery(value);
+        router.get(route('manager.dashboard'), { 
+            team_search: value,
+            task_search: taskSearchQuery,
+            team_page: 1
+        }, {
+            preserveState: true,
+            replace: true,
+        });
+    };
+
+    const handleTaskSearch = (value: string) => {
+        setTaskSearchQuery(value);
+        router.get(route('manager.dashboard'), { 
+            team_search: teamSearchQuery,
+            task_search: value,
+            task_page: 1
+        }, {
+            preserveState: true,
+            replace: true,
+        });
+    };
     return (
         <AuthenticatedLayout
             header={
@@ -113,16 +146,29 @@ export default function ManagerDashboard({ stats, taskStats, users, recentTasks 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                         <Card className="bg-[#0f0f10] border-slate-800/50">
                             <CardHeader>
-                                <CardTitle className="text-white">Team Overview</CardTitle>
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-white">Team Overview ({users.total})</CardTitle>
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <Input
+                                            type="text"
+                                            placeholder="Search team..."
+                                            value={teamSearchQuery}
+                                            onChange={(e) => handleTeamSearch(e.target.value)}
+                                            className="pl-9 bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50 focus:ring-indigo-500/20 w-48"
+                                        />
+                                    </div>
+                                </div>
                             </CardHeader>
                             <CardContent>
-                                {users.length === 0 ? (
+                                {users.data.length === 0 ? (
                                     <div className="text-center py-8">
-                                        <p className="text-slate-500">No team members yet</p>
+                                        <p className="text-slate-500">{teamSearchQuery ? 'No team members found' : 'No team members yet'}</p>
                                     </div>
                                 ) : (
-                                    <div className="space-y-3">
-                                        {users.slice(0, 5).map((teamUser) => (
+                                    <>
+                                        <div className="space-y-3">
+                                            {users.data.map((teamUser) => (
                                             <div
                                                 key={teamUser.id}
                                                 className="flex items-center justify-between p-3 rounded-lg bg-slate-900/50 border border-slate-800/50"
@@ -151,24 +197,80 @@ export default function ManagerDashboard({ stats, taskStats, users, recentTasks 
                                                     )}
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Team Pagination */}
+                                        {users.last_page > 1 && (
+                                            <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-800">
+                                                <div className="text-xs text-slate-400">
+                                                    {users.from}-{users.to} of {users.total}
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => router.get(route('manager.dashboard'), { 
+                                                            team_page: users.current_page - 1,
+                                                            task_page: recentTasks.current_page,
+                                                            team_search: teamSearchQuery,
+                                                            task_search: taskSearchQuery
+                                                        })}
+                                                        disabled={users.current_page === 1}
+                                                        className="border-slate-700 text-slate-300 hover:bg-slate-800/50 hover:text-white h-7 text-xs"
+                                                    >
+                                                        Prev
+                                                    </Button>
+                                                    <span className="text-xs text-slate-400">
+                                                        {users.current_page}/{users.last_page}
+                                                    </span>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => router.get(route('manager.dashboard'), { 
+                                                            team_page: users.current_page + 1,
+                                                            task_page: recentTasks.current_page,
+                                                            team_search: teamSearchQuery,
+                                                            task_search: taskSearchQuery
+                                                        })}
+                                                        disabled={users.current_page === users.last_page}
+                                                        className="border-slate-700 text-slate-300 hover:bg-slate-800/50 hover:text-white h-7 text-xs"
+                                                    >
+                                                        Next
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
                                 )}
                             </CardContent>
                         </Card>
 
                         <Card className="bg-[#0f0f10] border-slate-800/50">
                             <CardHeader>
-                                <CardTitle className="text-white">Recent Assigned Tasks</CardTitle>
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-white">Recent Assigned Tasks ({recentTasks.total})</CardTitle>
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <Input
+                                            type="text"
+                                            placeholder="Search tasks..."
+                                            value={taskSearchQuery}
+                                            onChange={(e) => handleTaskSearch(e.target.value)}
+                                            className="pl-9 bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50 focus:ring-indigo-500/20 w-48"
+                                        />
+                                    </div>
+                                </div>
                             </CardHeader>
                             <CardContent>
-                                {recentTasks.length === 0 ? (
+                                {recentTasks.data.length === 0 ? (
                                     <div className="text-center py-8">
-                                        <p className="text-slate-500">No recent tasks</p>
+                                        <p className="text-slate-500">{taskSearchQuery ? 'No tasks found' : 'No recent tasks'}</p>
                                     </div>
                                 ) : (
-                                    <div className="space-y-3">
-                                        {recentTasks.slice(0, 5).map((task) => (
+                                    <>
+                                        <div className="space-y-3">
+                                            {recentTasks.data.map((task) => (
                                             <div
                                                 key={task.id}
                                                 className="flex items-center gap-3 p-3 rounded-lg bg-slate-900/50 border border-slate-800/50"
@@ -185,11 +287,11 @@ export default function ManagerDashboard({ stats, taskStats, users, recentTasks 
                                                         )}
                                                         <span className={cn(
                                                             "px-1.5 py-0.5 rounded text-xs font-medium border capitalize",
-                                                            task.status === 'pending' ? 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30' :
-                                                            task.status === 'in_progress' ? 'text-blue-400 bg-blue-400/10 border-blue-400/30' :
+                                                            task.status_id === 1 ? 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30' :
+                                                            task.status_id === 2 ? 'text-blue-400 bg-blue-400/10 border-blue-400/30' :
                                                             'text-green-400 bg-green-400/10 border-green-400/30'
                                                         )}>
-                                                            {task.status.replace('_', ' ')}
+                                                            {task.task_status?.name}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -197,8 +299,51 @@ export default function ManagerDashboard({ stats, taskStats, users, recentTasks 
                                                     {new Date(task.created_at).toLocaleDateString()}
                                                 </span>
                                             </div>
-                                        ))}
-                                    </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Task Pagination */}
+                                        {recentTasks.last_page > 1 && (
+                                            <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-800">
+                                                <div className="text-xs text-slate-400">
+                                                    {recentTasks.from}-{recentTasks.to} of {recentTasks.total}
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => router.get(route('manager.dashboard'), { 
+                                                            team_page: users.current_page,
+                                                            task_page: recentTasks.current_page - 1,
+                                                            team_search: teamSearchQuery,
+                                                            task_search: taskSearchQuery
+                                                        })}
+                                                        disabled={recentTasks.current_page === 1}
+                                                        className="border-slate-700 text-slate-300 hover:bg-slate-800/50 hover:text-white h-7 text-xs"
+                                                    >
+                                                        Prev
+                                                    </Button>
+                                                    <span className="text-xs text-slate-400">
+                                                        {recentTasks.current_page}/{recentTasks.last_page}
+                                                    </span>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => router.get(route('manager.dashboard'), { 
+                                                            team_page: users.current_page,
+                                                            task_page: recentTasks.current_page + 1,
+                                                            team_search: teamSearchQuery,
+                                                            task_search: taskSearchQuery
+                                                        })}
+                                                        disabled={recentTasks.current_page === recentTasks.last_page}
+                                                        className="border-slate-700 text-slate-300 hover:bg-slate-800/50 hover:text-white h-7 text-xs"
+                                                    >
+                                                        Next
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
                                 )}
                             </CardContent>
                         </Card>

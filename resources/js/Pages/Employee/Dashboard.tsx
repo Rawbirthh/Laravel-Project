@@ -131,11 +131,11 @@ export default function EmployeeDashboard({ taskStats, recentTasks }: Props) {
                                                             )}
                                                             <span className={cn(
                                                                 "px-1.5 py-0.5 rounded text-xs font-medium border capitalize",
-                                                                task.status === 'pending' ? 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30' :
-                                                                task.status === 'in_progress' ? 'text-blue-400 bg-blue-400/10 border-blue-400/30' :
+                                                                task.status_id === 1 ? 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30' :
+                                                                task.status_id === 2 ? 'text-blue-400 bg-blue-400/10 border-blue-400/30' :
                                                                 'text-green-400 bg-green-400/10 border-green-400/30'
                                                             )}>
-                                                                {task.status.replace('_', ' ')}
+                                                                {task.task_status?.name}
                                                             </span>
                                                         </div>
 

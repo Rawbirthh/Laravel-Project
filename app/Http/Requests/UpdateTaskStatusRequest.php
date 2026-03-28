@@ -14,15 +14,15 @@ class UpdateTaskStatusRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => 'required|in:pending,in_progress,completed',
+            'status_id' => 'required|exists:task_statuses,id',
         ];
     }
 
     public function messages(): array
     {
         return [
-            'status.required' => 'Please select a status.',
-            'status.in' => 'Invalid status selected.',
+            'status_id.required' => 'Please select a status.',
+            'status_id.exists' => 'Invalid status selected.',
         ];
     }
 }

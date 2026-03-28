@@ -15,18 +15,23 @@ return new class extends Migration
             $table->id();
             $table->string('title');
             $table->text('description')->nullable();
-            $table->enum('status', ['pending', 'in_progress', 'completed'])->default('pending');
-            $table->enum('priority', ['low', 'medium', 'high'])->default('medium');
+            $table->foreignId('status_id')->constrained('task_statuses')->onDelete('cascade');
+            $table->foreignId('priority_id')->constrained('task_priorities')->onDelete('cascade');
+            $table->foreignId('type_id')->nullable()->constrained('task_types')->onDelete('set null');
             $table->date('due_date')->nullable();
             $table->foreignId('assigned_to')->constrained('users')->onDelete('cascade');
             $table->foreignId('assigned_by')->constrained('users')->onDelete('cascade');
             $table->foreignId('department_id')->nullable()->constrained('departments')->onDelete('set null');
+            $table->string('group_id')->nullable();
             $table->timestamps();
 
             $table->index('assigned_to');
             $table->index('assigned_by');
-            $table->index('status');
+            $table->index('status_id');
+            $table->index('priority_id');
             $table->index('department_id');
+            $table->index('group_id');
+            $table->index('type_id');
         });
     }
 

@@ -11,6 +11,9 @@ use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TodoController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PermissionController;
+use App\Http\Controllers\TaskPriorityController;
+use App\Http\Controllers\TaskStatusController;
+use App\Http\Controllers\TaskTypeController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -70,6 +73,24 @@ Route::middleware('auth')->group(function () {
         Route::post('/permissions', [PermissionController::class, 'store'])->name('permissions.store');
         Route::put('/permissions/{permission}', [PermissionController::class, 'update'])->name('permissions.update');
         Route::delete('/permissions/{permission}', [PermissionController::class, 'destroy'])->name('permissions.destroy');
+
+        // Task priorities management
+        Route::get('/task-priorities', [TaskPriorityController::class, 'index'])->name('task-priorities.index');
+        Route::post('/task-priorities', [TaskPriorityController::class, 'store'])->name('task-priorities.store');
+        Route::put('/task-priorities/{taskPriority}', [TaskPriorityController::class, 'update'])->name('task-priorities.update');
+        Route::delete('/task-priorities/{taskPriority}', [TaskPriorityController::class, 'destroy'])->name('task-priorities.destroy');
+
+        // Task statuses management
+        Route::get('/task-statuses', [TaskStatusController::class, 'index'])->name('task-statuses.index');
+        Route::post('/task-statuses', [TaskStatusController::class, 'store'])->name('task-statuses.store');
+        Route::put('/task-statuses/{taskStatus}', [TaskStatusController::class, 'update'])->name('task-statuses.update');
+        Route::delete('/task-statuses/{taskStatus}', [TaskStatusController::class, 'destroy'])->name('task-statuses.destroy');
+
+        // Task types management
+        Route::get('/task-types', [TaskTypeController::class, 'index'])->name('task-types.index');
+        Route::post('/task-types', [TaskTypeController::class, 'store'])->name('task-types.store');
+        Route::put('/task-types/{taskType}', [TaskTypeController::class, 'update'])->name('task-types.update');
+        Route::delete('/task-types/{taskType}', [TaskTypeController::class, 'destroy'])->name('task-types.destroy');
 
         // User management
         Route::get('/user-management', [UserManagementController::class, 'index'])->name('user-management.index');

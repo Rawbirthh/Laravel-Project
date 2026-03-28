@@ -110,13 +110,6 @@ export default function Index({ roles, filters, allPermissions }: IndexProps) {
                     <h2 className="text-xl font-semibold text-white tracking-tight">
                         Roles
                     </h2>
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-3 text-sm">
-                            <span className="text-slate-400">
-                                {roles.total} {roles.total === 1 ? 'Role' : 'Roles'}
-                            </span>
-                        </div>
-                    </div>
                 </div>
             }
         >
@@ -302,7 +295,7 @@ export default function Index({ roles, filters, allPermissions }: IndexProps) {
                                     <div className="flex items-center justify-between">
                                         <CardTitle className="text-white text-lg flex items-center gap-2">
                                             <Shield className="w-5 h-5 text-indigo-400" />
-                                            All Roles
+                                            All Roles ({roles.total})
                                         </CardTitle>
                                         <div className="relative">
                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />

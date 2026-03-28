@@ -1,4 +1,3 @@
-import type { Department } from '@/types/Department';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { useState } from 'react';
@@ -6,7 +5,7 @@ import {
     Plus, 
     Trash2, 
     Edit2, 
-    Building2,
+    Activity,
     X,
     Save,
     Loader2,
@@ -17,28 +16,30 @@ import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Separator } from '@/Components/ui/separator';
-import { PaginatedResponse , SearchFilter} from '@/types/index';
+import { PaginatedResponse, SearchFilter } from '@/types/index';
+import { TaskStatus } from '@/types/Task';
 
-interface IndexProps {
-    departments: PaginatedResponse<Department>;
-    filters: SearchFilter;
-    roles: PaginatedResponse<Department>;
+interface TaskStatusFormData {
+    name: string;
 }
 
-export default function Index({ departments, filters }: IndexProps) {
-    const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
+interface IndexProps {
+    statuses: PaginatedResponse<TaskStatus>;
+    filters: SearchFilter;
+}
+
+export default function Index({ statuses, filters }: IndexProps) {
+    const [editingStatus, setEditingStatus] = useState<TaskStatus | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [searchQuery, setSearchQuery] = useState(filters.search);
 
-    const { data, setData, post, put, delete: destroy, errors, reset, processing } = useForm({
-        code: '',
+    const { data, setData, post, put, delete: destroy, errors, reset, processing } = useForm<TaskStatusFormData>({
         name: '',
-        slug: '',
     });
 
     const handleSearch = (value: string) => {
         setSearchQuery(value);
-        router.get(route('admin.departments.index'), { search: value }, {
+        router.get(route('admin.task-statuses.index'), { search: value }, {
             preserveState: true,
             replace: true,
         });
@@ -46,31 +47,29 @@ export default function Index({ departments, filters }: IndexProps) {
 
     const handleCreate = () => {
         setIsCreating(true);
-        setEditingDepartment(null);
+        setEditingStatus(null);
         reset();
     };
 
-    const handleEdit = (department: Department) => {
-        setEditingDepartment(department);
+    const handleEdit = (status: TaskStatus) => {
+        setEditingStatus(status);
         setIsCreating(false);
         setData({
-            code: department.code,
-            name: department.name,
-            slug: department.slug || '',
+            name: status.name,
         });
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (editingDepartment) {
-            put(route('admin.departments.update', editingDepartment.id), {
+        if (editingStatus) {
+            put(route('admin.task-statuses.update', editingStatus.id), {
                 onSuccess: () => {
-                    setEditingDepartment(null);
+                    setEditingStatus(null);
                     reset();
                 },
             });
         } else {
-            post(route('admin.departments.store'), {
+            post(route('admin.task-statuses.store'), {
                 onSuccess: () => {
                     reset();
                     setIsCreating(false);
@@ -80,11 +79,11 @@ export default function Index({ departments, filters }: IndexProps) {
     };
 
     const handleDelete = (id: number) => {
-        if (confirm('Are you sure you want to delete this department?')) {
-            destroy(route('admin.departments.destroy', id), {
+        if (confirm('Are you sure you want to delete this task status?')) {
+            destroy(route('admin.task-statuses.destroy', id), {
                 onSuccess: () => {
-                    if (editingDepartment?.id === id) {
-                        setEditingDepartment(null);
+                    if (editingStatus?.id === id) {
+                        setEditingStatus(null);
                         reset();
                     }
                 },
@@ -93,7 +92,7 @@ export default function Index({ departments, filters }: IndexProps) {
     };
 
     const handleCancel = () => {
-        setEditingDepartment(null);
+        setEditingStatus(null);
         setIsCreating(false);
         reset();
     };
@@ -103,12 +102,12 @@ export default function Index({ departments, filters }: IndexProps) {
             header={
                 <div className="flex items-center justify-between">
                     <h2 className="text-xl font-semibold text-white tracking-tight">
-                        Departments
+                        Task Statuses
                     </h2>
                 </div>
             }
         >
-            <Head title="Departments" />
+            <Head title="Task Statuses" />
 
             <div className="py-8">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
@@ -118,60 +117,36 @@ export default function Index({ departments, filters }: IndexProps) {
                             <Card className="bg-[#0f0f10] border-slate-800/50 shadow-xl sticky top-4">
                                 <CardHeader className="pb-4">
                                     <CardTitle className="text-white text-lg flex items-center gap-2">
-                                        {editingDepartment ? (
+                                        {editingStatus ? (
                                             <>
                                                 <Edit2 className="w-5 h-5 text-indigo-400" />
-                                                Edit Department
+                                                Edit Status
                                             </>
                                         ) : (
                                             <>
                                                 <Plus className="w-5 h-5 text-indigo-400" />
-                                                {isCreating ? 'Create New Department' : 'Add Department'}
+                                                {isCreating ? 'Create New Status' : 'Add Status'}
                                             </>
                                         )}
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    {!isCreating && !editingDepartment ? (
+                                    {!isCreating && !editingStatus ? (
                                         <Button
                                             onClick={handleCreate}
                                             className="w-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 rounded-xl gap-2"
                                         >
                                             <Plus className="w-4 h-4" />
-                                            Create Department
+                                            Create Status
                                         </Button>
                                     ) : (
                                         <form onSubmit={handleSubmit} className="space-y-4">
                                             <div>
                                                 <label
-                                                    htmlFor="code"
-                                                    className="block text-sm font-medium text-slate-300 mb-1.5"
-                                                >
-                                                    Code
-                                                </label>
-                                                <Input
-                                                    id="code"
-                                                    type="text"
-                                                    value={data.code}
-                                                    onChange={(e) =>
-                                                        setData('code', e.target.value)
-                                                    }
-                                                    placeholder="e.g., IT, HR, FINANCE"
-                                                    className="bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50 focus:ring-indigo-500/20"
-                                                />
-                                                {errors.code && (
-                                                    <p className="mt-1.5 text-sm text-rose-400">
-                                                        {errors.code}
-                                                    </p>
-                                                )}
-                                            </div>
-
-                                            <div>
-                                                <label
                                                     htmlFor="name"
                                                     className="block text-sm font-medium text-slate-300 mb-1.5"
                                                 >
-                                                    Name
+                                                    Status Name
                                                 </label>
                                                 <Input
                                                     id="name"
@@ -180,36 +155,12 @@ export default function Index({ departments, filters }: IndexProps) {
                                                     onChange={(e) =>
                                                         setData('name', e.target.value)
                                                     }
-                                                    placeholder="e.g., Information Technology"
+                                                    placeholder="e.g., Pending, In Progress, Completed"
                                                     className="bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50 focus:ring-indigo-500/20"
                                                 />
                                                 {errors.name && (
                                                     <p className="mt-1.5 text-sm text-rose-400">
                                                         {errors.name}
-                                                    </p>
-                                                )}
-                                            </div>
-
-                                            <div>
-                                                <label
-                                                    htmlFor="slug"
-                                                    className="block text-sm font-medium text-slate-300 mb-1.5"
-                                                >
-                                                    Slug (optional)
-                                                </label>
-                                                <Input
-                                                    id="slug"
-                                                    type="text"
-                                                    value={data.slug}
-                                                    onChange={(e) =>
-                                                        setData('slug', e.target.value)
-                                                    }
-                                                    placeholder="e.g., information-technology"
-                                                    className="bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50 focus:ring-indigo-500/20"
-                                                />
-                                                {errors.slug && (
-                                                    <p className="mt-1.5 text-sm text-rose-400">
-                                                        {errors.slug}
                                                     </p>
                                                 )}
                                             </div>
@@ -227,7 +178,7 @@ export default function Index({ departments, filters }: IndexProps) {
                                                     ) : (
                                                         <Save className="w-4 h-4" />
                                                     )}
-                                                    {editingDepartment ? 'Update' : 'Create'}
+                                                    {editingStatus ? 'Update' : 'Create'}
                                                 </Button>
                                                 <Button
                                                     type="button"
@@ -250,14 +201,14 @@ export default function Index({ departments, filters }: IndexProps) {
                                 <CardHeader className="pb-4">
                                     <div className="flex items-center justify-between">
                                         <CardTitle className="text-white text-lg flex items-center gap-2">
-                                            <Building2 className="w-5 h-5 text-indigo-400" />
-                                            All Departments ({departments.total})
+                                            <Activity className="w-5 h-5 text-indigo-400" />
+                                            All Statuses ({statuses.total})
                                         </CardTitle>
                                         <div className="relative">
                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                             <Input
                                                 type="text"
-                                                placeholder="Search departments..."
+                                                placeholder="Search statuses..."
                                                 value={searchQuery}
                                                 onChange={(e) => handleSearch(e.target.value)}
                                                 className="pl-9 bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50 focus:ring-indigo-500/20 w-64"
@@ -266,16 +217,16 @@ export default function Index({ departments, filters }: IndexProps) {
                                     </div>
                                 </CardHeader>
                                 <CardContent>
-                                    {departments.data.length === 0 ? (
+                                    {statuses.data.length === 0 ? (
                                         <div className="text-center py-12">
                                             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800/50 flex items-center justify-center">
-                                                <Building2 className="w-8 h-8 text-slate-600" />
+                                                <Activity className="w-8 h-8 text-slate-600" />
                                             </div>
                                             <p className="text-slate-500 text-lg">
-                                                {searchQuery ? 'No departments found' : 'No departments yet'}
+                                                {searchQuery ? 'No statuses found' : 'No statuses yet'}
                                             </p>
                                             <p className="text-slate-600 text-sm mt-1">
-                                                {searchQuery ? 'Try a different search term' : 'Create your first department to get started'}
+                                                {searchQuery ? 'Try a different search term' : 'Create your first status to get started'}
                                             </p>
                                         </div>
                                     ) : (
@@ -284,36 +235,28 @@ export default function Index({ departments, filters }: IndexProps) {
                                                 <table className="w-full">
                                                     <thead>
                                                         <tr className="border-b border-slate-800">
-                                                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Code</th>
                                                             <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Name</th>
-                                                            <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Slug</th>
                                                             <th className="text-right py-3 px-4 text-sm font-medium text-slate-400">Actions</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {departments.data.map((department) => (
+                                                        {statuses.data.map((status) => (
                                                             <tr
-                                                                key={department.id}
+                                                                key={status.id}
                                                                 className={cn(
                                                                     "border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors",
-                                                                    editingDepartment?.id === department.id && "bg-indigo-500/10"
+                                                                    editingStatus?.id === status.id && "bg-indigo-500/10"
                                                                 )}
                                                             >
                                                                 <td className="py-3 px-4">
-                                                                    <span className="font-medium text-slate-200">{department.code}</span>
-                                                                </td>
-                                                                <td className="py-3 px-4">
-                                                                    <span className="text-slate-300">{department.name}</span>
-                                                                </td>
-                                                                <td className="py-3 px-4">
-                                                                    <span className="text-slate-400 text-sm">{department.slug || '-'}</span>
+                                                                    <span className="font-medium text-slate-200">{status.name}</span>
                                                                 </td>
                                                                 <td className="py-3 px-4 text-right">
                                                                     <div className="flex items-center justify-end gap-2">
                                                                         <Button
                                                                             variant="ghost"
                                                                             size="icon"
-                                                                            onClick={() => handleEdit(department)}
+                                                                            onClick={() => handleEdit(status)}
                                                                             className="text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 h-8 w-8"
                                                                         >
                                                                             <Edit2 className="w-4 h-4" />
@@ -321,7 +264,7 @@ export default function Index({ departments, filters }: IndexProps) {
                                                                         <Button
                                                                             variant="ghost"
                                                                             size="icon"
-                                                                            onClick={() => handleDelete(department.id)}
+                                                                            onClick={() => handleDelete(status.id)}
                                                                             className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 h-8 w-8"
                                                                         >
                                                                             <Trash2 className="w-4 h-4" />
@@ -335,29 +278,29 @@ export default function Index({ departments, filters }: IndexProps) {
                                             </div>
 
                                             {/* Pagination */}
-                                            {departments.last_page > 1 && (
+                                            {statuses.last_page > 1 && (
                                                 <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-800">
                                                     <div className="text-sm text-slate-400">
-                                                        Showing {departments.from} to {departments.to} of {departments.total} departments
+                                                        Showing {statuses.from} to {statuses.to} of {statuses.total} statuses
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
-                                                            onClick={() => router.get(route('admin.departments.index'), { page: departments.current_page - 1, search: searchQuery })}
-                                                            disabled={departments.current_page === 1}
+                                                            onClick={() => router.get(route('admin.task-statuses.index'), { page: statuses.current_page - 1, search: searchQuery })}
+                                                            disabled={statuses.current_page === 1}
                                                             className="border-slate-700 text-slate-300 hover:bg-slate-800/50 hover:text-white"
                                                         >
                                                             Previous
                                                         </Button>
                                                         <span className="text-sm text-slate-400">
-                                                            Page {departments.current_page} of {departments.last_page}
+                                                            Page {statuses.current_page} of {statuses.last_page}
                                                         </span>
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
-                                                            onClick={() => router.get(route('admin.departments.index'), { page: departments.current_page + 1, search: searchQuery })}
-                                                            disabled={departments.current_page === departments.last_page}
+                                                            onClick={() => router.get(route('admin.task-statuses.index'), { page: statuses.current_page + 1, search: searchQuery })}
+                                                            disabled={statuses.current_page === statuses.last_page}
                                                             className="border-slate-700 text-slate-300 hover:bg-slate-800/50 hover:text-white"
                                                         >
                                                             Next
