@@ -38,7 +38,7 @@ class TaskController extends Controller
         $types = TaskType::orderBy('name')->get(['id', 'name']);
 
         if ($user->hasPermission('view.all-employee.task')) {
-            $tasks = $this->taskService->getTasksAssignedBy($user, $filters);
+            $tasks = $this->taskService->getDepartmentTasks($user, $filters);
             $employees = $this->taskService->getAssignableEmployees($user);
             $stats = $this->taskService->getManagerTaskStats($user);
 
@@ -66,18 +66,25 @@ class TaskController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $this->authorize('create', Task::class);
 
-        $employees = $this->taskService->getAssignableEmployees(auth()->user());
+        $user = auth()->user();
+        $employees = $this->taskService->getAssignableEmployees($user);
         $priorities = TaskPriority::orderBy('name')->get(['id', 'name']);
         $types = TaskType::orderBy('name')->get(['id', 'name']);
+
+        // Get assigned tasks with filters
+        $filters = $request->only(['search']);
+        $assignedTasks = $this->taskService->getTasksAssignedBy($user, $filters);
 
         return Inertia::render('Manager/Tasks/Create', [
             'employees' => $employees,
             'priorities' => $priorities,
             'types' => $types,
+            'assignedTasks' => $assignedTasks,
+            'filters' => $filters,
         ]);
     }
 
@@ -87,7 +94,7 @@ class TaskController extends Controller
 
         $this->taskService->createTask($request->validated(), auth()->user());
 
-        return redirect()->route('manager.tasks.index')
+        return redirect()->route('tasks.index')
             ->with('success', 'Task(s) assigned successfully!');
     }
 
@@ -127,7 +134,7 @@ class TaskController extends Controller
 
         $this->taskService->updateTask($task, $request->validated());
 
-        return redirect()->route('manager.tasks.index')
+        return redirect()->route('tasks.index')
             ->with('success', 'Task updated successfully!');
     }
 
@@ -150,7 +157,7 @@ class TaskController extends Controller
 
         $this->taskService->deleteTask($task);
 
-        return redirect()->route('manager.tasks.index')
+        return redirect()->route('tasks.index')
             ->with('success', 'Task deleted successfully!');
     }
 }

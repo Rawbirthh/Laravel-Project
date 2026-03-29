@@ -5,21 +5,24 @@ namespace App\Http\Controllers;
 use App\Http\Requests\TaskTypeFormRequest;
 use App\Models\TaskType;
 use Illuminate\Http\Request;
+use App\Repositories\SearchPaginationRepository;
 use Inertia\Inertia;
 
 class TaskTypeController extends Controller
 {
+    protected $searchPaginationRepository;
+
+    public function __construct(SearchPaginationRepository $searchPaginationRepository)
+    {
+        $this->searchPaginationRepository = $searchPaginationRepository;
+    }
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', TaskType::class);
 
-        $types = TaskType::query()
-            ->when($request->search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%");
-            })
-            ->orderBy('name')
-            ->paginate(15)
-            ->withQueryString();
+        $search = $request->get('search', '');
+        $types = $this->searchPaginationRepository->searchAndPaginate(new TaskType(), $search, ['name']);
 
         return Inertia::render('TaskTypes/Index', [
             'types' => $types,

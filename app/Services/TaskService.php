@@ -65,9 +65,47 @@ class TaskService
         $task->delete();
     }
 
+    public function getDepartmentTasks(User $manager, array $filters = []): LengthAwarePaginator
+    {
+        $departmentId = $manager->departments()->first()?->id;
+
+        $query = Task::with(['assignee','assigner', 'department', 'otherGroupAssignees', 'taskStatus', 'taskPriority', 'taskType'])
+            ->where('department_id', $departmentId)
+            ->where(function ($q) {
+                $q->whereNull('group_id')
+                  ->orWhereIn('id', function($subQuery) {
+                      $subQuery->selectRaw('MIN(id)')
+                               ->from('tasks')
+                               ->whereNotNull('group_id')
+                               ->groupBy('group_id');
+                  });
+            });
+
+        if (!empty($filters['search'])) {
+            $query->where(function ($q) use ($filters) {
+                $q->where('title', 'like', "%{$filters['search']}%")
+                  ->orWhere('description', 'like', "%{$filters['search']}%");
+            });
+        }
+        if (!empty($filters['status_id'])) {
+            $query->where('status_id', $filters['status_id']);
+        }
+        if (!empty($filters['priority_id'])) {
+            $query->where('priority_id', $filters['priority_id']);
+        }
+        if (!empty($filters['type_id'])) {
+            $query->where('type_id', $filters['type_id']);
+        }
+        if (!empty($filters['assigned_to'])) {
+            $query->where('assigned_to', $filters['assigned_to']);
+        }
+
+        return $query->latest()->paginate(10)->withQueryString();
+    }
+
     public function getTasksAssignedBy(User $manager, array $filters = []): LengthAwarePaginator
     {
-        $query = Task::with(['assignee', 'department', 'otherGroupAssignees', 'taskStatus', 'taskPriority', 'taskType'])
+        $query = Task::with(['assignee','assigner', 'department', 'otherGroupAssignees', 'taskStatus', 'taskPriority', 'taskType'])
             ->where('assigned_by', $manager->id)
             ->where(function ($q) {
                 $q->whereNull('group_id')
@@ -128,7 +166,8 @@ class TaskService
 
     public function getManagerTaskStats(User $manager): array
     {
-        $tasks = Task::where('assigned_by', $manager->id)->with('taskStatus', 'taskPriority')->get();
+        $departmentId = $manager->departments()->first()?->id;
+        $tasks = Task::where('department_id', $departmentId)->with('taskStatus', 'taskPriority')->get();
 
         $statusCounts = $tasks->pluck('taskStatus.name')->countBy();
         $priorityCounts = $tasks->pluck('taskPriority.name')->countBy();

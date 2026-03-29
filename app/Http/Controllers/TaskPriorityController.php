@@ -3,27 +3,31 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\TaskPriorityFormRequest;
+use App\Repositories\SearchPaginationRepository;
 use App\Models\TaskPriority;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class TaskPriorityController extends Controller
 {
+    protected $searchPaginationRepository;
+
+    public function __construct(SearchPaginationRepository $searchPaginationRepository)
+    {
+        $this->searchPaginationRepository = $searchPaginationRepository;
+    }
+    
     public function index(Request $request)
     {
         $this->authorize('viewAny', TaskPriority::class);
-
-        $priorities = TaskPriority::query()
-            ->when($request->search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%");
-            })
-            ->orderBy('name')
-            ->paginate(15)
-            ->withQueryString();
+        $search = $request->get('search', '');
+        $priorities = $this->searchPaginationRepository->searchAndPaginate(new TaskPriority(), $search, ['name']);
 
         return Inertia::render('TaskPriorities/Index', [
             'priorities' => $priorities,
-            'filters' => $request->only('search'),
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 

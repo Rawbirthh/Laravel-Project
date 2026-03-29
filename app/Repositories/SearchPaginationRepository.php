@@ -10,7 +10,7 @@ class SearchPaginationRepository
         Model $model,
         $search = '',
         array $searchableFields = ['code', 'name'],
-        int $perPage = 10
+        int $perPage = 15
     ) {
         return $model
             ->newQuery()

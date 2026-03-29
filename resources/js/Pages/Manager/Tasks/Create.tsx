@@ -1,9 +1,10 @@
 import type { User } from '@/types/User';
+import type { Task, TaskPriority, TaskType } from '@/types/Task';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { useState } from 'react';
 import { 
-    ArrowLeft, Save, Loader2, UserCheck, Calendar, Flag, FileText, Users, Activity, Tag
+    ArrowLeft, Save, Loader2, UserCheck, Calendar, Flag, FileText, Users, Tag, Search, Eye
 } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
@@ -12,16 +13,26 @@ import InputLabel from '@/Components/InputLabel';
 import UserAvatar from '@/Components/UserAvatar';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
-import type { TaskPriority, TaskType } from '@/types/Task';
 
 interface Props {
     employees: User[];
     priorities: TaskPriority[];
     types: TaskType[];
+    assignedTasks: {
+        data: Task[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+        from: number;
+        to: number;
+    };
+    filters: { search?: string };
 }
 
-export default function ManagerTasksCreate({ employees,priorities, types }: Props) {
+export default function ManagerTasksCreate({ employees, priorities, types, assignedTasks, filters }: Props) {
     const [taskType, setTaskType] = useState<'individual' | 'group'>('individual');
+    const [searchQuery, setSearchQuery] = useState(filters.search || '');
 
     const { data, setData, post, processing, errors } = useForm({
         title: '',
@@ -36,7 +47,27 @@ export default function ManagerTasksCreate({ employees,priorities, types }: Prop
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        post(route('manager.tasks.store'));
+        post(route('tasks.store'), {
+            preserveScroll: true,
+            onSuccess: () => {
+                setData({
+                    title: '',
+                    description: '',
+                    status_id: '',
+                    priority_id: '',
+                    type_id: '',
+                    due_date: '',
+                    task_type: 'individual',
+                    assigned_to: [],
+                });
+                setTaskType('individual');
+            },
+        });
+    };
+
+    const handleSearch = (value: string) => {
+        setSearchQuery(value);
+        router.get(route('tasks.create'), { search: value }, { preserveState: true, preserveScroll: true });
     };
 
     const handleEmployeeSelect = (employeeId: string) => {
@@ -65,7 +96,7 @@ export default function ManagerTasksCreate({ employees,priorities, types }: Prop
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => router.get(route('manager.tasks.index'))}
+                        onClick={() => router.get(route('tasks.index'))}
                         className="text-slate-400 hover:text-white hover:bg-slate-800/50"
                     >
                         <ArrowLeft className="w-5 h-5" />
@@ -298,7 +329,7 @@ export default function ManagerTasksCreate({ employees,priorities, types }: Prop
                                 <div className="flex items-center justify-end gap-3">
                                     <Button
                                         type="button"
-                                        onClick={() => router.get(route('manager.tasks.index'))}
+                                        onClick={() => router.get(route('tasks.index'))}
                                         className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2"
                                     >
                                         Cancel
@@ -319,6 +350,150 @@ export default function ManagerTasksCreate({ employees,priorities, types }: Prop
                             </div>
                         </div>
                     </form>
+
+                    {/* Assigned Tasks List */}
+                    <Card className="bg-[#0f0f10] border-slate-800/50 shadow-xl mt-8">
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-white">My Assigned Tasks ({assignedTasks.total})</CardTitle>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                    <Input
+                                        type="text"
+                                        placeholder="Search tasks..."
+                                        value={searchQuery}
+                                        onChange={(e) => handleSearch(e.target.value)}
+                                        className="pl-9 bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50 focus:ring-indigo-500/20 w-64"
+                                    />
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            {assignedTasks.data.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <FileText className="w-12 h-12 mx-auto text-slate-600 mb-4" />
+                                    <p className="text-slate-500">{searchQuery ? 'No tasks found' : 'No tasks assigned yet'}</p>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-slate-800">
+                                                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Task</th>
+                                                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Assigned To</th>
+                                                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Status</th>
+                                                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Priority</th>
+                                                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Due Date</th>
+                                                    <th className="text-right py-3 px-4 text-sm font-medium text-slate-400">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {assignedTasks.data.map((task) => (
+                                                    <tr key={task.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                                                        <td className="py-3 px-4">
+                                                            <p className="font-medium text-slate-200">{task.title}</p>
+                                                            {task.description && (
+                                                                <p className="text-xs text-slate-500 truncate max-w-xs">{task.description}</p>
+                                                            )}
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            {task.assignee && (
+                                                                <div className="flex items-center gap-2">
+                                                                    <UserAvatar user={task.assignee} size="sm" />
+                                                                    <span className="text-slate-300">{task.assignee.name}</span>
+                                                                    {task.group_id && task.other_group_assignees && task.other_group_assignees.length > 0 && (
+                                                                        <span className="text-xs text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded">
+                                                                            +{task.other_group_assignees.length}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            <span className={cn(
+                                                                "px-2 py-1 rounded text-xs font-medium border",
+                                                                task.task_status?.name.toLowerCase() === 'pending' ? 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30' :
+                                                                task.task_status?.name.toLowerCase().replace(/\s+/g, '_') === 'in_progress' ? 'text-blue-400 bg-blue-400/10 border-blue-400/30' :
+                                                                'text-green-400 bg-green-400/10 border-green-400/30'
+                                                            )}>
+                                                                {task.task_status?.name || 'Unknown'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            <span className={cn(
+                                                                "px-2 py-1 rounded text-xs font-medium border",
+                                                                task.task_priority?.name.toLowerCase() === 'high' ? 'text-red-400 bg-red-400/10 border-red-400/30' :
+                                                                task.task_priority?.name.toLowerCase() === 'medium' ? 'text-orange-400 bg-orange-400/10 border-orange-400/30' :
+                                                                'text-slate-400 bg-slate-400/10 border-slate-400/30'
+                                                            )}>
+                                                                {task.task_priority?.name || 'Unknown'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            <span className="text-slate-400 text-sm">
+                                                                {task.due_date ? new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No due date'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            <div className="flex items-center justify-end">
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="icon" 
+                                                                    onClick={() => router.get(route('manager.tasks.show', task.id))} 
+                                                                    className="text-slate-400 hover:text-white hover:bg-slate-800"
+                                                                >
+                                                                    <Eye className="w-4 h-4" />
+                                                                </Button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {/* Pagination */}
+                                    {assignedTasks.last_page > 1 && (
+                                        <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-800">
+                                            <div className="text-sm text-slate-400">
+                                                Showing {assignedTasks.from} to {assignedTasks.to} of {assignedTasks.total} tasks
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => router.get(route('tasks.create'), {
+                                                        page: assignedTasks.current_page - 1,
+                                                        search: searchQuery || undefined,
+                                                    }, { preserveState: true, preserveScroll: true })}
+                                                    disabled={assignedTasks.current_page === 1}
+                                                    className="border-slate-700 text-slate-300 hover:bg-slate-800/50 hover:text-white"
+                                                >
+                                                    Previous
+                                                </Button>
+                                                <span className="text-sm text-slate-400">
+                                                    Page {assignedTasks.current_page} of {assignedTasks.last_page}
+                                                </span>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => router.get(route('tasks.create'), {
+                                                        page: assignedTasks.current_page + 1,
+                                                        search: searchQuery || undefined,
+                                                    }, { preserveState: true, preserveScroll: true })}
+                                                    disabled={assignedTasks.current_page === assignedTasks.last_page}
+                                                    className="border-slate-700 text-slate-300 hover:bg-slate-800/50 hover:text-white"
+                                                >
+                                                    Next
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
         </AuthenticatedLayout>

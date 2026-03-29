@@ -6,25 +6,28 @@ use App\Http\Requests\PermissionFormRequest;
 use App\Models\Permission;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use App\Repositories\SearchPaginationRepository;
 
 class PermissionController extends Controller
 {
+    protected $searchPaginationRepository;
+
+    public function __construct(SearchPaginationRepository $searchPaginationRepository)
+    {
+        $this->searchPaginationRepository = $searchPaginationRepository;
+    }
+    
     public function index(Request $request)
     {
         $this->authorize('viewAny', Permission::class);
-
-        $permissions = Permission::query()
-            ->when($request->search, function ($query, $search) {
-                $query->where('permission_name', 'like', "%{$search}%")
-                    ->orWhere('display_name', 'like', "%{$search}%");
-            })
-            ->orderBy('permission_name')
-            ->paginate(10)
-            ->withQueryString();
+        $search = $request->get('search', '');
+        $permissions = $this->searchPaginationRepository->searchAndPaginate(new Permission(), $search, ['permission_name', 'display_name','description']);
 
         return Inertia::render('Permissions/Index', [
             'permissions' => $permissions,
-            'filters' => $request->only('search'),
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 

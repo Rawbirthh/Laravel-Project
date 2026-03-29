@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import UserAvatar from '@/Components/UserAvatar';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/Components/ui/dropdown-menu';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface Props {
     tasks: {
@@ -34,6 +35,12 @@ interface Props {
 }
 
 export default function ManagerTasksIndex({ tasks, employees, stats, filters, statuses, priorities, types }: Props) {
+    const { hasPermission } = usePermissions();
+    console.log('Task data:', tasks.data.map(t => ({ 
+    id: t.id, 
+    title: t.title, 
+    assigner: t.assigner 
+})));
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const [statusFilter, setStatusFilter] = useState(filters.status_id || '');
     const [priorityFilter, setPriorityFilter] = useState(filters.priority_id || '');
@@ -42,7 +49,7 @@ export default function ManagerTasksIndex({ tasks, employees, stats, filters, st
 
     const handleSearch = (value: string) => {
         setSearchQuery(value);
-        router.get(route('manager.tasks.index'), {
+        router.get(route('tasks.index'), {
             search: value,
             status_id: statusFilter || undefined,
             priority_id: priorityFilter || undefined,
@@ -52,7 +59,7 @@ export default function ManagerTasksIndex({ tasks, employees, stats, filters, st
     };
 
     const applyFilters = () => {
-        router.get(route('manager.tasks.index'), {
+        router.get(route('tasks.index'), {
             search: searchQuery || undefined,
             status_id: statusFilter || undefined,
             priority_id: priorityFilter || undefined,
@@ -232,10 +239,12 @@ export default function ManagerTasksIndex({ tasks, employees, stats, filters, st
                                     <Filter className="w-4 h-4" />
                                     Apply Filters
                                 </Button>
-                                 <Button onClick={() => router.get(route('manager.tasks.create'))} className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2">
-                                    <Plus className="w-4 h-4" />
-                                    Assign New Task
-                                </Button>
+                                {hasPermission('create.tasks') && (
+                                    <Button onClick={() => router.get(route('tasks.create'))} className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2">
+                                        <Plus className="w-4 h-4" />
+                                        Assign New Task
+                                    </Button>
+                                )}
                             </div>
                         </CardContent>
                     </Card>
@@ -270,6 +279,7 @@ export default function ManagerTasksIndex({ tasks, employees, stats, filters, st
                                         <thead>
                                             <tr className="border-b border-slate-800">
                                                 <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Task</th>
+                                                <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Assigned By</th>
                                                 <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Assigned To</th>
                                                 <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Status</th>
                                                 <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Priority</th>
@@ -289,6 +299,8 @@ export default function ManagerTasksIndex({ tasks, employees, stats, filters, st
                                                             )}
                                                         </div>
                                                     </td>
+                                                    
+                                                    <td><span className="text-slate-300">{task.assigner?.name}</span></td>
                                                     
                                                     {/* UPDATED ASSIGNED TO COLUMN */}
                                                     <td className="py-3 px-4">
@@ -364,13 +376,13 @@ export default function ManagerTasksIndex({ tasks, employees, stats, filters, st
                                                     </td>
                                                     <td className="py-3 px-4">
                                                         <div className="flex items-center justify-end gap-2">
-                                                            <Button variant="ghost" size="icon" onClick={() => router.get(route('manager.tasks.show', task.id))} className="text-slate-400 hover:text-white hover:bg-slate-800">
+                                                            <Button variant="ghost" size="icon" onClick={() => router.get(route('tasks.show', task.id))} className="text-slate-400 hover:text-white hover:bg-slate-800">
                                                                 <Eye className="w-4 h-4" />
                                                             </Button>
-                                                            <Button variant="ghost" size="icon" onClick={() => router.get(route('manager.tasks.edit', task.id))} className="text-slate-400 hover:text-white hover:bg-slate-800">
+                                                            <Button variant="ghost" size="icon" onClick={() => router.get(route('tasks.edit', task.id))} className="text-slate-400 hover:text-white hover:bg-slate-800">
                                                                 <Edit className="w-4 h-4" />
                                                             </Button>
-                                                            <Button variant="ghost" size="icon" onClick={() => { if(confirm('Delete?')) router.delete(route('manager.tasks.destroy', task.id)); }} className="text-red-400 hover:text-red-300 hover:bg-slate-800">
+                                                            <Button variant="ghost" size="icon" onClick={() => { if(confirm('Delete?')) router.delete(route('tasks.destroy', task.id)); }} className="text-red-400 hover:text-red-300 hover:bg-slate-800">
                                                                 <Trash2 className="w-4 h-4" />
                                                             </Button>
                                                         </div>
@@ -392,7 +404,7 @@ export default function ManagerTasksIndex({ tasks, employees, stats, filters, st
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            onClick={() => router.get(route('manager.tasks.index'), {
+                                            onClick={() => router.get(route('tasks.index'), {
                                                 page: tasks.current_page - 1,
                                                 search: searchQuery || undefined,
                                                 status_id: statusFilter || undefined,
@@ -411,7 +423,7 @@ export default function ManagerTasksIndex({ tasks, employees, stats, filters, st
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            onClick={() => router.get(route('manager.tasks.index'), {
+                                            onClick={() => router.get(route('tasks.index'), {
                                                 page: tasks.current_page + 1,
                                                 search: searchQuery || undefined,
                                                 status_id: statusFilter || undefined,

@@ -9,7 +9,7 @@ class StoreTaskRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->user()?->hasRole('manager') ?? false;
+        return auth()->user()?->hasPermission('create.tasks') ?? false;
     }
 
     public function rules(): array

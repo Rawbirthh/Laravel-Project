@@ -48,7 +48,7 @@ class TaskPolicy
 
     public function delete(User $user, Task $task): bool
     {
-        return $user->hasRole('manager') && $task->assigned_by === $user->id;
+        return $user->hasPermission('delete.tasks') && $task->assigned_by === $user->id;
     }
 
     public function updateStatus(User $user, Task $task): bool

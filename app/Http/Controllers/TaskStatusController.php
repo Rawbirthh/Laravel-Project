@@ -5,21 +5,24 @@ namespace App\Http\Controllers;
 use App\Http\Requests\TaskStatusFormRequest;
 use App\Models\TaskStatus;
 use Illuminate\Http\Request;
+use App\Repositories\SearchPaginationRepository;
 use Inertia\Inertia;
 
 class TaskStatusController extends Controller
 {
+    protected $searchPaginationRepository;
+
+    public function __construct(SearchPaginationRepository $searchPaginationRepository)
+    {
+        $this->searchPaginationRepository = $searchPaginationRepository;
+    }
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', TaskStatus::class);
 
-        $statuses = TaskStatus::query()
-            ->when($request->search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%");
-            })
-            ->orderBy('name')
-            ->paginate(15)
-            ->withQueryString();
+        $search = $request->get('search', '');
+        $statuses = $this->searchPaginationRepository->searchAndPaginate(new TaskStatus(), $search, ['name']);
 
         return Inertia::render('TaskStatuses/Index', [
             'statuses' => $statuses,

@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { PaginatedResponse, SearchFilter } from '@/types/index';
 import type { Task, TaskStats } from '@/types/Task';
 import type { User } from '@/types/User';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface Props {
     stats: { employees: number };
@@ -23,6 +24,8 @@ interface Props {
 }
 
 export default function ManagerDashboard({ stats, taskStats, users, recentTasks, filters }: Props) {
+    const { hasPermission } = usePermissions();
+    
     const [teamSearchQuery, setTeamSearchQuery] = useState(filters.team_search);
     const [taskSearchQuery, setTaskSearchQuery] = useState(filters.task_search);
 
@@ -65,20 +68,22 @@ export default function ManagerDashboard({ stats, taskStats, users, recentTasks,
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
                     <div className="flex gap-3 mb-6">
                         <Button
-                            onClick={() => router.get(route('manager.tasks.index'))}
+                            onClick={() => router.get(route('tasks.index'))}
                             className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2"
                         >
                             <ClipboardList className="w-4 h-4" />
                             Task Management
                         </Button>
-                        <Button
-                            onClick={() => router.get(route('manager.tasks.create'))}
-                            variant="outline"
-                            className="border-slate-700 text-slate-300 gap-2 bg-[#0f0f10]"
-                        >
-                            <Plus className="w-4 h-4" />
-                            Assign New Task
-                        </Button>
+                        {hasPermission('create.tasks') && (
+                            <Button
+                                onClick={() => router.get(route('tasks.create'))}
+                                variant="outline"
+                                className="border-slate-700 text-slate-300 gap-2 bg-[#0f0f10]"
+                            >
+                                <Plus className="w-4 h-4" />
+                                Assign New Task
+                            </Button>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">

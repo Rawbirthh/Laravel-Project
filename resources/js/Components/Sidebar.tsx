@@ -19,6 +19,7 @@ import { Link, useForm } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { User } from '@/types';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface NavItem {
     label: string;
@@ -30,7 +31,7 @@ interface NavItem {
 export function Sidebar() {
     const page = usePage();
     const user = page.props.auth.user as User;
-    const permissions = (page.props.auth.permissions as string[]) || [];
+    const { permissions, hasPermission } = usePermissions();
     
     const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -38,11 +39,11 @@ export function Sidebar() {
         // Employee Items
         { label: 'Dashboard', href: route('employee.dashboard'), icon: LayoutDashboard, permission: 'access.employee.dashboard' },
         { label: 'My Tasks', href: route('todos.index'), icon: CheckSquare, permission: 'view_own_tasks' },
-        { label: 'Team Tasks', href: route('employee.tasks.index'), icon: CheckSquare, permission: 'view.my-own.task' },
+        { label: 'My Tasks', href: route('tasks.index'), icon: CheckSquare, permission: 'view.my-own.task' },
 
         // Manager Items
         { label: 'Manager Dashboard', href: route('manager.dashboard'), icon: LayoutDashboard, permission: 'access.manager.dashboard' },
-        { label: 'Team Tasks', href: route('manager.tasks.index'), icon: CheckSquare, permission: 'view.all-employee.task' },
+        { label: 'Team Tasks', href: route('tasks.index'), icon: CheckSquare, permission: 'view.all-employee.task' },
         { label: 'Team Members', href: route('manager.team'), icon: Users, permission: 'view.manager.team' },
 
         // Admin Items
@@ -62,7 +63,7 @@ export function Sidebar() {
     // Filter items: Show if no permission is required OR if user has the permission
     const navItems = allNavItems.filter((item) => {
         if (!item.permission) return true;
-        return permissions.includes(item.permission);
+        return hasPermission(item.permission);
     });
 
     const { post } = useForm();

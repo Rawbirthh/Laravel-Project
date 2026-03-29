@@ -31,7 +31,7 @@ export default function EmployeeDashboard({ taskStats, recentTasks }: Props) {
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
                     <div className="flex gap-3 mb-6">
                         <Button
-                            onClick={() => router.get(route('employee.tasks.index'))}
+                            onClick={() => router.get(route('tasks.index'))}
                             className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2"
                         >
                             <ClipboardList className="w-4 h-4" />

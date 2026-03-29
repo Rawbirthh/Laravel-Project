@@ -4,11 +4,12 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { 
     ClipboardList, Clock, CheckCircle, AlertTriangle, 
-    Filter, Play, CheckSquare, Eye, Calendar, User, Users 
+    Filter, Play, CheckSquare, Eye, Calendar, User, Users,Plus 
 } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { cn } from '@/lib/utils';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface Props {
     tasks: {
@@ -27,13 +28,15 @@ interface Props {
 }
 
 export default function EmployeeTasksIndex({ tasks, stats, filters, statuses, priorities, types }: Props) {
+    const { hasPermission } = usePermissions();
+    
     const [statusFilter, setStatusFilter] = useState(filters.status_id || '');
     const [priorityFilter, setPriorityFilter] = useState(filters.priority_id || '');
     const [typeFilter, setTypeFilter] = useState(filters.type_id || '');
     const [updatingTaskId, setUpdatingTaskId] = useState<number | null>(null);
 
     const applyFilters = () => {
-        router.get(route('employee.tasks.index'), {
+        router.get(route('tasks.index'), {
             status_id: statusFilter || undefined,
             priority_id: priorityFilter || undefined,
             type_id: typeFilter || undefined,
@@ -160,6 +163,12 @@ export default function EmployeeTasksIndex({ tasks, stats, filters, statuses, pr
                                 <Button onClick={applyFilters} className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2">
                                     <Filter className="w-4 h-4" /> Apply Filters
                                 </Button>
+                                {hasPermission('create.tasks') && (
+                                    <Button onClick={() => router.get(route('tasks.create'))} className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2">
+                                        <Plus className="w-4 h-4" />
+                                        Assign New Task
+                                    </Button>
+                                )}
                             </div>
                         </CardContent>
                     </Card>
