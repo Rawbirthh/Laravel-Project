@@ -14,6 +14,7 @@ import {
     LogOut,
     ChevronRight,
     ChevronLeft,
+    Plus,
 } from 'lucide-react';
 import { Link, useForm } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
@@ -36,17 +37,18 @@ export function Sidebar() {
     const [isCollapsed, setIsCollapsed] = useState(false);
 
     const allNavItems: NavItem[] = [
-        // Employee Items
+        //employee Items
         { label: 'Dashboard', href: route('employee.dashboard'), icon: LayoutDashboard, permission: 'access.employee.dashboard' },
         { label: 'My Tasks', href: route('todos.index'), icon: CheckSquare, permission: 'view_own_tasks' },
         { label: 'My Tasks', href: route('tasks.index'), icon: CheckSquare, permission: 'view.my-own.task' },
 
-        // Manager Items
+        //manager Items
         { label: 'Manager Dashboard', href: route('manager.dashboard'), icon: LayoutDashboard, permission: 'access.manager.dashboard' },
         { label: 'Team Tasks', href: route('tasks.index'), icon: CheckSquare, permission: 'view.all-employee.task' },
         { label: 'Team Members', href: route('manager.team'), icon: Users, permission: 'view.manager.team' },
+        { label: 'Assign Task', href: route('tasks.create'), icon: Plus, permission: 'create.tasks' }, //also the employee have this route
 
-        // Admin Items
+        //admin Items
         { label: 'Admin Dashboard', href: route('admin.dashboard'), icon: Shield, permission: 'access.admin.dashboard' },
         { label: 'User Management', href: route('admin.user-management.index'), icon: Users, permission: 'create.users' },
         { label: 'Departments', href: route('admin.departments.index'), icon: Building2, permission: 'create.departments' },

@@ -17,17 +17,21 @@ class EmployeeController extends Controller
         $this->taskService = $taskService;
     }
 
-    public function dashboard()
+    public function dashboard(Request $request)
     {
         $user = auth()->user();
 
+        $dashboardData = $this->taskService->getEmployeeDashboardData(
+            $user,
+            $request->received_search,
+            $request->assigned_search
+        );
+
         return Inertia::render('Employee/Dashboard', [
             'taskStats' => $this->taskService->getEmployeeTaskStats($user),
-            'recentTasks' => Task::with(['assigner', 'department', 'otherGroupAssignees.assignee'])
-                ->where('assigned_to', $user->id)
-                ->latest()
-                ->take(10)
-                ->get(),
+            'assignedTaskStats' => $this->taskService->getEmployeeAssignedTasksStats($user),
+            'recentTasks' => $dashboardData['recentTasks'],
+            'assignedTasks' => $dashboardData['assignedTasks'],
         ]);
     }
 }

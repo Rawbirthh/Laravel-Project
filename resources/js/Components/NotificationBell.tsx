@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Bell, Check, X } from 'lucide-react';
+import axios from 'axios';
 import { router } from '@inertiajs/react';
 import type { Notification } from '@/types/Notification';
 
@@ -21,10 +22,9 @@ export default function NotificationBell({ initialCount = 0 }: NotificationBellP
 
     const fetchNotifications = async () => {
         try {
-            const response = await fetch(route('notifications.unread'));
-            const data = await response.json();
-            setNotifications(data.notifications);
-            setUnreadCount(data.unread_count);
+            const response = await axios.get(route('notifications.unread'));
+            setNotifications(response.data.notifications);
+            setUnreadCount(response.data.unread_count);
         } catch (error) {
             console.error('Failed to fetch notifications:', error);
         }
@@ -32,16 +32,8 @@ export default function NotificationBell({ initialCount = 0 }: NotificationBellP
 
     const markAsRead = async (notificationId: number) => {
         try {
-            await fetch(route('notifications.read', notificationId), {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
-                },
-            });
-            setNotifications(prev => 
-                prev.filter(n => n.id !== notificationId)
-            );
+            await axios.put(route('notifications.read', notificationId));
+            setNotifications(prev => prev.filter(n => n.id !== notificationId));
             setUnreadCount(prev => Math.max(0, prev - 1));
         } catch (error) {
             console.error('Failed to mark notification as read:', error);
@@ -50,17 +42,37 @@ export default function NotificationBell({ initialCount = 0 }: NotificationBellP
 
     const markAllAsRead = async () => {
         try {
-            await fetch(route('notifications.read-all'), {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
-                },
-            });
-            setNotifications([]);
+            await axios.put(route('notifications.read-all'));
             setUnreadCount(0);
+            setNotifications([]);
         } catch (error) {
             console.error('Failed to mark all notifications as read:', error);
+        }
+    };
+
+    const handleNotificationClick = async (notification: Notification) => {
+        const notificationId = notification.id;
+        const notificationType = notification.type;
+        
+        setNotifications(prev => prev.filter(n => n.id !== notificationId));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+        
+        try {
+            await axios.put(route('notifications.read', notificationId));
+        } catch (error) {
+            console.error('Failed to mark notification as read:', error);
+        }
+        
+        setIsOpen(false);
+        
+        if (notificationType === 'task_assigned' || 
+            notificationType === 'task_status_changed' || 
+            notificationType === 'task_started' || 
+            notificationType === 'task_completed' ||
+            notificationType === 'task_submitted' ||
+            notificationType === 'task_approved' ||
+            notificationType === 'task_rejected') {
+            window.location.href = route('tasks.index');
         }
     };
 
@@ -74,6 +86,12 @@ export default function NotificationBell({ initialCount = 0 }: NotificationBellP
                 return '✅';
             case 'task_status_changed':
                 return '🔄';
+            case 'task_submitted':
+                return '📤';
+            case 'task_approved':
+                return '🎉';
+            case 'task_rejected':
+                return '❌';
             default:
                 return '📌';
         }
@@ -126,7 +144,8 @@ export default function NotificationBell({ initialCount = 0 }: NotificationBellP
                                     {notifications.map((notification) => (
                                         <div
                                             key={notification.id}
-                                            className="p-3 hover:bg-slate-900/50 transition-colors"
+                                            className="p-3 hover:bg-slate-900/50 transition-colors cursor-pointer"
+                                            onClick={() => handleNotificationClick(notification)}
                                         >
                                             <div className="flex items-start gap-2">
                                                 <span className="text-lg">
@@ -145,14 +164,9 @@ export default function NotificationBell({ initialCount = 0 }: NotificationBellP
                                                         {new Date(notification.created_at).toLocaleString()}
                                                     </p>
                                                 </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => markAsRead(notification.id)}
-                                                    className="p-1 hover:bg-slate-800 rounded transition-colors"
-                                                    title="Mark as read"
-                                                >
-                                                    <Check className="w-4 h-4 text-slate-500 hover:text-green-400" />
-                                                </button>
+                                                {!notification.read && (
+                                                    <span className="w-2 h-2 bg-indigo-500 rounded-full shrink-0" />
+                                                )}
                                             </div>
                                         </div>
                                     ))}

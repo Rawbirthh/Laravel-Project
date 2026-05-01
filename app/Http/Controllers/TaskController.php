@@ -13,6 +13,8 @@ use App\Services\NotificationService;
 use App\Http\Requests\StoreTaskRequest;
 use App\Http\Requests\UpdateTaskRequest;
 use App\Http\Requests\UpdateTaskStatusRequest;
+use App\Http\Requests\SubmitTaskRequest;
+use App\Http\Requests\ReviewTaskRequest;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -143,9 +145,10 @@ class TaskController extends Controller
         $this->authorize('updateStatus', $task);
 
         $oldStatus = $task->taskStatus->name;
-        $this->taskService->updateTaskStatus($task, $request->status_id);
-
-        $this->notificationService->notifyTaskStatusChanged($task, $oldStatus, $request->status_id);
+        $updatedTask = $this->taskService->updateTaskStatus($task, $request->status_id);
+        $newStatus = $updatedTask->taskStatus->name;
+        
+        $this->notificationService->notifyTaskStatusChanged($updatedTask, $oldStatus, $newStatus);
 
         return redirect()->back()
             ->with('success', 'Task status updated!');
@@ -159,5 +162,30 @@ class TaskController extends Controller
 
         return redirect()->route('tasks.index')
             ->with('success', 'Task deleted successfully!');
+    }
+
+    public function submitTask(SubmitTaskRequest $request, Task $task)
+    {
+        $this->authorize('submitTask', $task);
+
+        $updatedTask = $this->taskService->submitTask($task, $request->validated('solution_text'), $request->file('attachments') ?? []);
+        
+        $this->notificationService->notifyTaskSubmitted($updatedTask);
+
+        return redirect()->back()
+            ->with('success', 'Task submitted for review!');
+    }
+
+    public function reviewTask(ReviewTaskRequest $request, Task $task)
+    {
+        $this->authorize('reviewTask', $task);
+
+        $data = $request->validated();
+        $updatedTask = $this->taskService->reviewTask($task, $data, auth()->user());
+        
+        $this->notificationService->notifyTaskReviewed($updatedTask, $data['action'], $data['comment'] ?? null);
+
+        return redirect()->back()
+            ->with('success', 'Task review completed!');
     }
 }

@@ -64,6 +64,11 @@ class Task extends Model
         return $this->belongsTo(TaskType::class, 'type_id');
     }
 
+    public function submission()
+    {
+        return $this->hasOne(TaskSubmission::class);
+    }
+
     public function scopePending($query)
     {
         return $query->whereHas('taskStatus', function ($q) {

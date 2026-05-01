@@ -120,6 +120,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/tasks/{task}/edit', [TaskController::class, 'edit'])->name('tasks.edit');
         Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
         Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
+        Route::post('/tasks/{task}/review', [TaskController::class, 'reviewTask'])->name('tasks.review');
     });
     
     // Employee routes
@@ -127,9 +128,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/dashboard', [EmployeeController::class, 'dashboard'])->name('dashboard');
         
         // Task viewing
-        // Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
+        Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
         Route::get('/tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
         Route::put('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.update-status');
+        Route::post('/tasks/{task}/submit', [TaskController::class, 'submitTask'])->name('tasks.submit');
     });
 
     // Notification routes (for all authenticated users)

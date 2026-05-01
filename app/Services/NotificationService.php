@@ -40,13 +40,61 @@ class NotificationService
 
         //notify the manager when employee starts or completes a task
         if ($assignee->id !== $assigner->id) {
-            $statusText = str_replace('_', ' ', $newStatus);
+            $statusText = ucfirst($newStatus);
             
             Notification::create([
                 'user_id' => $assigner->id,
                 'type' => 'task_status_changed',
                 'title' => 'Task Status Updated',
                 'message' => "Task \"{$task->title}\" has been marked as {$statusText} by {$assignee->name}",
+                'notifiable_type' => Task::class,
+                'notifiable_id' => $task->id,
+                'read' => false,
+            ]);
+        }
+    }
+
+    public function notifyTaskSubmitted(Task $task): void
+    {
+        $assignee = $task->assignee;
+        $assigner = $task->assigner;
+
+        if (!$assignee || !$assigner) {
+            return;
+        }
+
+        if ($assignee->id !== $assigner->id) {
+            Notification::create([
+                'user_id' => $assigner->id,
+                'type' => 'task_submitted',
+                'title' => 'Task Submitted for Review',
+                'message' => "Task \"{$task->title}\" has been submitted by {$assignee->name}",
+                'notifiable_type' => Task::class,
+                'notifiable_id' => $task->id,
+                'read' => false,
+            ]);
+        }
+    }
+
+    public function notifyTaskReviewed(Task $task, string $action, ?string $comment = null): void
+    {
+        $assignee = $task->assignee;
+        $assigner = $task->assigner;
+
+        if (!$assignee || !$assigner) {
+            return;
+        }
+
+        if ($assignee->id !== $assigner->id) {
+            $message = $action === 'approve' 
+                ? "Your task \"{$task->title}\" has been approved by {$assigner->name}"
+                : "Your task \"{$task->title}\" has been rejected by {$assigner->name}" . ($comment ? " Reason: {$comment}" : "");
+
+            Notification::create([
+                'user_id' => $assignee->id,
+                'type' => $action === 'approve' ? 'task_approved' : 'task_rejected',
+                'title' => $action === 'approve' ? 'Task Approved' : 'Task Rejected',
+                'message' => $message,
                 'notifiable_type' => Task::class,
                 'notifiable_id' => $task->id,
                 'read' => false,

@@ -22,6 +22,29 @@ export interface TaskType {
     updated_at: string;
 }
 
+export interface TaskSubmission {
+    id: number;
+    task_id: number;
+    user_id: number;
+    solution_text: string;
+    submitted_at: string;
+    reviewed_by?: number;
+    reviewed_at?: string;
+    review_comment?: string;
+    user?: User;
+    reviewer?: User;
+    attachments?: TaskSubmissionAttachment[];
+}
+
+export interface TaskSubmissionAttachment {
+    id: number;
+    task_submission_id: number;
+    file_path: string;
+    file_name: string;
+    file_type?: string;
+    file_size?: number;
+}
+
 export interface Task {
     id: number;
     title: string;
@@ -43,6 +66,7 @@ export interface Task {
     task_priority?: TaskPriority;
     task_type?: TaskType;
     other_group_assignees?: Task[];
+    submission?: TaskSubmission;
 }
 
 export interface TaskStats {
