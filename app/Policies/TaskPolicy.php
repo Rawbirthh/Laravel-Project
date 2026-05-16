@@ -15,12 +15,17 @@ class TaskPolicy
         return $user->hasPermission('view.tasks');
     }
 
-    public function view(User $user): bool
+    public function viewAll(User $user): bool
     {
         if ($user->hasPermission('view.all-employee.task')) {
             return true;
         }
 
+        return false;
+    }
+
+    public function viewOwn(User $user): bool
+    {
         if ($user->hasPermission('view.my-own.task')) {
             return true;
         }

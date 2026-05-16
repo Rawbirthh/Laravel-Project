@@ -76,3 +76,12 @@ export interface TaskStats {
     completed: number;
     high_priority?: number;
 }
+
+export interface EmployeeTaskStats {
+    total: number;
+    pending: number;
+    in_progress: number;
+    completed: number;
+    for_review: number;
+    high_priority: number;
+}

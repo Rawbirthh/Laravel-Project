@@ -449,17 +449,15 @@ export default function ManagerTasksCreate({ employees, priorities, types, assig
                                                             )}
                                                         </td>
                                                         <td className="py-3 px-4">
-                                                            {task.assignee && (
-                                                                <div className="flex items-center gap-2">
+                                                            {task.assignee ? (
+                                                                <button
+                                                                    onClick={() => router.get(route('manager.employees.show', task.assignee!.id))}
+                                                                    className="flex items-center gap-2 hover:text-indigo-400 transition-colors"
+                                                                >
                                                                     <UserAvatar user={task.assignee} size="sm" />
-                                                                    <span className="text-slate-300">{task.assignee.name}</span>
-                                                                    {task.group_id && task.other_group_assignees && task.other_group_assignees.length > 0 && (
-                                                                        <span className="text-xs text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded">
-                                                                            +{task.other_group_assignees.length}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            )}
+                                                                    <span className="text-slate-300 hover:text-indigo-400">{task.assignee.name}</span>
+                                                                </button>
+                                                            ) : null}
                                                         </td>
                                                         <td className="py-3 px-4">
                                                             <span className={cn(

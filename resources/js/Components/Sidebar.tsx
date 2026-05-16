@@ -15,6 +15,7 @@ import {
     ChevronRight,
     ChevronLeft,
     Plus,
+    Users2
 } from 'lucide-react';
 import { Link, useForm } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
@@ -26,7 +27,7 @@ interface NavItem {
     label: string;
     href: string;
     icon: any;
-    permission?: string; // Optional permission key
+    permission?: string;
 }
 
 export function Sidebar() {
@@ -39,12 +40,12 @@ export function Sidebar() {
     const allNavItems: NavItem[] = [
         //employee Items
         { label: 'Dashboard', href: route('employee.dashboard'), icon: LayoutDashboard, permission: 'access.employee.dashboard' },
-        { label: 'My Tasks', href: route('todos.index'), icon: CheckSquare, permission: 'view_own_tasks' },
-        { label: 'My Tasks', href: route('tasks.index'), icon: CheckSquare, permission: 'view.my-own.task' },
+        // { label: 'My Tasks', href: route('todos.index'), icon: CheckSquare, permission: 'view_own_tasks' },
+        { label: 'My Tasks', href: route('employee.tasks.index'), icon: CheckSquare, permission: 'view.my-own.task' },
 
         //manager Items
         { label: 'Manager Dashboard', href: route('manager.dashboard'), icon: LayoutDashboard, permission: 'access.manager.dashboard' },
-        { label: 'Team Tasks', href: route('tasks.index'), icon: CheckSquare, permission: 'view.all-employee.task' },
+        { label: 'Team Tasks', href: route('tasks.index'), icon: Users2, permission: 'view.all-employee.task' },
         { label: 'Team Members', href: route('manager.team'), icon: Users, permission: 'view.manager.team' },
         { label: 'Assign Task', href: route('tasks.create'), icon: Plus, permission: 'create.tasks' }, //also the employee have this route
 
@@ -58,11 +59,10 @@ export function Sidebar() {
         { label: 'Task Statuses', href: route('admin.task-statuses.index'), icon: CheckCircle, permission: 'create.task-statuses' },
         { label: 'Task Types', href: route('admin.task-types.index'), icon: List, permission: 'create.task-types' },
 
-        // Settings (Visible to everyone or protected if needed)
         { label: 'Profile', href: route('profile.edit'), icon: Settings },
     ];
 
-    // Filter items: Show if no permission is required OR if user has the permission
+    //filter items: show if no permission is required OR if user has the permission
     const navItems = allNavItems.filter((item) => {
         if (!item.permission) return true;
         return hasPermission(item.permission);

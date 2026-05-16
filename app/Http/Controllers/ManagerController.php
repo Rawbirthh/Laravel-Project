@@ -4,19 +4,26 @@ namespace App\Http\Controllers;
 
 use App\Repositories\UserRepository;
 use App\Services\TaskService;
+use App\Services\EmployeeTaskService;
 use App\Models\Task;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use App\Models\User;
 
 class ManagerController extends Controller
 {
     protected UserRepository $userRepository;
     protected TaskService $taskService;
+    protected EmployeeTaskService $employeeTaskService;
 
-    public function __construct(UserRepository $userRepository, TaskService $taskService)
-    {
+    public function __construct(
+        UserRepository $userRepository, 
+        TaskService $taskService,
+        EmployeeTaskService $employeeTaskService
+    ) {
         $this->userRepository = $userRepository;
         $this->taskService = $taskService;
+        $this->employeeTaskService = $employeeTaskService;
     }
 
     public function dashboard(Request $request)
@@ -63,5 +70,32 @@ class ManagerController extends Controller
         $users = $this->userRepository->getSameDepartmentUsers(auth()->user());
 
         return Inertia::render('Manager/Team', ['users' => $users]);
+    }
+
+    public function showEmployee(Request $request, User $user)
+    {
+        $this->authorize('viewEmployee', $user);
+
+        $filters = [
+            'status_id' => $request->get('status_id', ''),
+            'priority_id' => $request->get('priority_id', ''),
+            'type_id' => $request->get('type_id', ''),
+            'task_type' => $request->get('task_type', ''),
+            'search' => $request->get('search', ''),
+        ];
+
+        $taskStats = $this->employeeTaskService->getTaskStats($user);
+        $tasks = $this->employeeTaskService->getTasks($user, $filters);
+        $filterOptions = $this->employeeTaskService->getFilterOptions();
+
+        return Inertia::render('Manager/Employees/Show', [
+            'employee' => $user->load(['roles:id,name', 'departments:id,name']),
+            'taskStats' => $taskStats,
+            'tasks' => $tasks,
+            'statuses' => $filterOptions['statuses'],
+            'priorities' => $filterOptions['priorities'],
+            'types' => $filterOptions['types'],
+            'filters' => $filters,
+        ]);
     }
 }

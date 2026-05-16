@@ -31,7 +31,7 @@ class TaskController extends Controller
 
     public function index(Request $request)
     {
-        $this->authorize('view', Task::class);
+        $this->authorize('viewAll', Task::class);
         $user = auth()->user();
         $filters = $request->only(['status_id', 'priority_id', 'type_id', 'assigned_to', 'search']);
 
@@ -39,21 +39,31 @@ class TaskController extends Controller
         $priorities = TaskPriority::orderBy('name')->get(['id', 'name']);
         $types = TaskType::orderBy('name')->get(['id', 'name']);
 
-        if ($user->hasPermission('view.all-employee.task')) {
-            $tasks = $this->taskService->getDepartmentTasks($user, $filters);
-            $employees = $this->taskService->getAssignableEmployees($user);
-            $stats = $this->taskService->getManagerTaskStats($user);
+        $tasks = $this->taskService->getDepartmentTasks($user, $filters);
+        $employees = $this->taskService->getAssignableEmployees($user);
+        $stats = $this->taskService->getManagerTaskStats($user);
 
-            return Inertia::render('Manager/Tasks/Index', [
-                'tasks' => $tasks,
-                'employees' => $employees,
-                'stats' => $stats,
-                'filters' => $filters,
-                'statuses' => $statuses,
-                'priorities' => $priorities,
-                'types' => $types,
-            ]);
-        }
+        return Inertia::render('Manager/Tasks/Index', [
+            'tasks' => $tasks,
+            'employees' => $employees,
+            'stats' => $stats,
+            'filters' => $filters,
+            'statuses' => $statuses,
+            'priorities' => $priorities,
+            'types' => $types,
+        ]);
+    }
+
+    public function myTask(Request $request)
+    {
+        $this->authorize('viewOwn', Task::class);
+
+        $user = auth()->user();
+        $filters = $request->only(['status_id', 'priority_id', 'type_id', 'assigned_to', 'search']);
+
+        $statuses = TaskStatus::orderBy('name')->get(['id', 'name']);
+        $priorities = TaskPriority::orderBy('name')->get(['id', 'name']);
+        $types = TaskType::orderBy('name')->get(['id', 'name']);
 
         $tasks = $this->taskService->getTasksAssignedTo($user, $filters);
         $stats = $this->taskService->getEmployeeTaskStats($user);

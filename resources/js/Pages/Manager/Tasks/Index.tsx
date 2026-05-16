@@ -381,13 +381,16 @@ export default function ManagerTasksIndex({ tasks, employees, stats, filters, st
                                                                 </DropdownMenuContent>
                                                             </DropdownMenu>
                                                         ) : (
-                                                            // INDIVIDUAL TASK: Show simple avatar
-                                                            task.assignee && (
-                                                                <div className="flex items-center gap-2">
+                                                            // INDIVIDUAL TASK: Show clickable avatar and name
+                                                            task.assignee ? (
+                                                                <button
+                                                                    onClick={() => router.get(route('manager.employees.show', task.assignee!.id))}
+                                                                    className="flex items-center gap-2 hover:text-indigo-400 transition-colors"
+                                                                >
                                                                     <UserAvatar user={task.assignee} size="sm" />
-                                                                    <span className="text-slate-300">{task.assignee.name}</span>
-                                                                </div>
-                                                            )
+                                                                    <span className="text-slate-300 hover:text-indigo-400">{task.assignee.name}</span>
+                                                                </button>
+                                                            ) : null
                                                         )}
                                                     </td>
 

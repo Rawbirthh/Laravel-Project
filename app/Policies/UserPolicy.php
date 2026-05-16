@@ -33,4 +33,16 @@ class UserPolicy
     {
         return $user->hasPermission('delete.users');
     }
+
+    public function viewEmployee(User $user, User $targetUser)
+    {
+        if ($user->hasPermission('access.manager.dashboard')) {
+            return true;
+        }
+
+        $userDeptId = $user->departments()->first()?->id;
+        $targetDeptId = $targetUser->departments()->first()?->id;
+
+        return $userDeptId && $userDeptId === $targetDeptId;
+    }
 }

@@ -180,10 +180,13 @@ export default function ManagerDashboard({ stats, taskStats, users, recentTasks,
                                             >
                                                 <div className="flex items-center gap-3">
                                                     <UserAvatar user={teamUser} size="md" />
-                                                    <div>
-                                                        <p className="text-sm font-medium text-slate-200">{teamUser.name}</p>
+                                                    <button
+                                                        onClick={() => router.get(route('manager.employees.show', teamUser.id))}
+                                                        className="text-left hover:text-indigo-400 transition-colors"
+                                                    >
+                                                        <p className="text-sm font-medium text-slate-200 hover:text-indigo-400">{teamUser.name}</p>
                                                         <p className="text-xs text-slate-500">{teamUser.email}</p>
-                                                    </div>
+                                                    </button>
                                                 </div>
                                                 <div className="flex gap-1 flex-wrap">
                                                     {teamUser.roles && teamUser.roles.length > 0 ? (
