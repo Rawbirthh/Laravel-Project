@@ -98,4 +98,36 @@ class ManagerController extends Controller
             'filters' => $filters,
         ]);
     }
+
+    public function departmentTeam(Request $request)
+    {
+        $user = auth()->user();
+        $search = $request->get('search', '');
+
+        $employees = $this->userRepository->getSameDepartmentUsersQuery($user)
+            ->select(['id', 'name', 'email', 'profile_picture'])
+            ->with(['roles:id,name'])
+            ->when($search, fn($q, $v) => $q->where(function ($q) use ($v) {
+                $q->where('name', 'like', "%{$v}%")
+                  ->orWhere('email', 'like', "%{$v}%");
+            }))
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        $bulkStats = $this->employeeTaskService->getBulkTaskStats(collect($employees->items()));
+
+        $employees->getCollection()->transform(function ($emp) use ($bulkStats) {
+            $emp->taskStats = $bulkStats[$emp->id] ?? [
+                'total' => 0, 'pending' => 0, 'in_progress' => 0,
+                'for_review' => 0, 'completed' => 0, 'high_priority' => 0,
+            ];
+            return $emp;
+        });
+
+        return Inertia::render('Manager/DepartmentTeam', [
+            'employees' => $employees,
+            'filters' => ['search' => $search],
+        ]);
+    }
 }

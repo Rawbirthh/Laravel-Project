@@ -148,18 +148,6 @@ export default function Edit({ user, allRoles, allDepartments }: EditProps) {
                             Manage User: {user.name}
                         </h2>
                     </div>
-                    <Button
-                        onClick={handleSaveAll}
-                        disabled={processing}
-                        className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2"
-                    >
-                        {processing ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                            <Save className="w-4 h-4" />
-                        )}
-                        Save All Changes
-                    </Button>
                 </div>
             }
         >
@@ -501,6 +489,27 @@ export default function Edit({ user, allRoles, allDepartments }: EditProps) {
                             </CardContent>
                         </Card>
                     )}
+
+                    {/* Sticky Bottom Bar */}
+                    <div className="sticky bottom-0 mt-6 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 bg-[#0f0f10]/90 backdrop-blur-lg border-t border-slate-800/50">
+                        <div className="flex items-center justify-between max-w-7xl mx-auto">
+                            <p className="text-sm text-slate-400">
+                                Changes are saved per tab, or use Save All to update everything at once
+                            </p>
+                            <Button
+                                onClick={handleSaveAll}
+                                disabled={processing}
+                                className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2"
+                            >
+                                {processing ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <Save className="w-4 h-4" />
+                                )}
+                                Save All Changes
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </AuthenticatedLayout>

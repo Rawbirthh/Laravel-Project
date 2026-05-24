@@ -4,6 +4,7 @@ export interface User {
     email: string;
     profile_picture?: string;
     profile_picture_url?: string;
+    bio?: string;
     roles?: Role[];
     departments?: Department[];
     created_at: string;

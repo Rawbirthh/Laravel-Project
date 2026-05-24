@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 class EmployeeTaskService
 {
@@ -20,6 +21,34 @@ class EmployeeTaskService
             'for_review' => (clone $baseQuery)->whereHas('taskStatus', fn($q) => $q->where('name', 'For Review'))->count(),
             'high_priority' => (clone $baseQuery)->whereHas('taskPriority', fn($q) => $q->where('name', 'High'))->count(),
         ];
+    }
+
+    public function getBulkTaskStats(Collection $users): array
+    {
+        $userIds = $users->pluck('id');
+
+        $tasks = Task::whereIn('assigned_to', $userIds)
+            ->with(['taskStatus:id,name', 'taskPriority:id,name'])
+            ->get()
+            ->groupBy('assigned_to');
+
+        $stats = [];
+        foreach ($users as $user) {
+            $userTasks = $tasks->get($user->id, collect());
+            $statusCounts = $userTasks->pluck('taskStatus.name')->countBy();
+            $priorityCounts = $userTasks->pluck('taskPriority.name')->countBy();
+
+            $stats[$user->id] = [
+                'total' => $userTasks->count(),
+                'pending' => $statusCounts->get('Pending', 0),
+                'in_progress' => $statusCounts->get('In Progress', 0),
+                'for_review' => $statusCounts->get('For Review', 0),
+                'completed' => $statusCounts->get('Completed', 0),
+                'high_priority' => $priorityCounts->get('High', 0),
+            ];
+        }
+
+        return $stats;
     }
 
     public function getTasks(User $employee, array $filters): LengthAwarePaginator

@@ -1,5 +1,6 @@
 import type { Task, TaskStats, TaskStatus, TaskPriority, TaskType, TaskSubmission } from '@/types/Task';
 import type { User } from '@/types/User';
+import type { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
@@ -17,7 +18,7 @@ import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/Components/ui/dropdown-menu';
 import { usePermissions } from '@/hooks/usePermissions';
 
-interface Props {
+interface Props extends PageProps {
     tasks: {
         data: Task[];
         current_page: number;
@@ -36,7 +37,7 @@ interface Props {
     types: TaskType[];
 }
 
-export default function ManagerTasksIndex({ tasks, employees, stats, filters, statuses, priorities, types }: Props) {
+export default function ManagerTasksIndex({ tasks, employees, stats, filters, statuses, priorities, types, auth }: Props) {
     const { hasPermission } = usePermissions();
     
     const [selectedSubmission, setSelectedSubmission] = useState<{ task: Task; submission: TaskSubmission } | null>(null);
@@ -427,11 +428,13 @@ export default function ManagerTasksIndex({ tasks, employees, stats, filters, st
                                                                     <FileText className="w-4 h-4" />
                                                                     <span>View Details</span>
                                                                 </Button>
-                                                            ) : task.task_status?.name?.toLowerCase() === 'for review' ? (
-                                                                <Button variant="ghost" size="sm" onClick={() => openReviewModal(task)} className="text-amber-400 hover:text-amber-300 hover:bg-slate-800 gap-1.5">
-                                                                    <Eye className="w-4 h-4" />
-                                                                    <span>Review</span>
-                                                                </Button>
+                                                            ) : task.assigner?.id !== auth.user.id ? null : task.task_status?.name?.toLowerCase() === 'for review' ? (
+                                                                hasPermission('review.tasks') ? (
+                                                                    <Button variant="ghost" size="sm" onClick={() => openReviewModal(task)} className="text-amber-400 hover:text-amber-300 hover:bg-slate-800 gap-1.5">
+                                                                        <Eye className="w-4 h-4" />
+                                                                        <span>Review</span>
+                                                                    </Button>
+                                                                ) : null
                                                             ) : (
                                                                 <Button variant="ghost" size="sm" onClick={() => { if(confirm('Delete?')) router.delete(route('tasks.destroy', task.id)); }} className="text-red-400 hover:text-red-300 hover:bg-slate-800 gap-1.5">
                                                                     <Trash2 className="w-4 h-4" />
@@ -516,7 +519,7 @@ export default function ManagerTasksIndex({ tasks, employees, stats, filters, st
                         <div className="space-y-4">
                             {/* Submitter Info */}
                             <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg">
-                                <UserAvatar user={selectedSubmission.submission.user} size="sm" />
+                                {selectedSubmission.submission.user && <UserAvatar user={selectedSubmission.submission.user} size="sm" />}
                                 <div>
                                     <p className="text-sm font-medium text-white">{selectedSubmission.submission.user?.name}</p>
                                     <p className="text-xs text-slate-400">Submitted {formatDate(selectedSubmission.submission.submitted_at)}</p>

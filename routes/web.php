@@ -107,6 +107,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/dashboard', [ManagerController::class, 'dashboard'])->name('dashboard');
         Route::get('/team', [ManagerController::class, 'team'])->name('team');
         Route::get('/employees/{user}', [ManagerController::class, 'showEmployee'])->name('employees.show');
+        Route::get('/department-team', [ManagerController::class, 'departmentTeam'])->name('department-team');
         
         // Task management
         // Route::get('/tasks/create', [TaskController::class, 'create'])->name('tasks.create');
@@ -130,6 +131,7 @@ Route::middleware('auth')->group(function () {
         
         // Task viewing
         Route::get('/tasks', [TaskController::class, 'myTask'])->name('tasks.index');
+        Route::get('/tasks/board/column', [TaskController::class, 'loadColumn'])->name('tasks.board.column');
         Route::get('/tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
         Route::put('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.update-status');
         Route::post('/tasks/{task}/submit', [TaskController::class, 'submitTask'])->name('tasks.submit');

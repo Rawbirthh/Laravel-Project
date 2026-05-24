@@ -5,9 +5,10 @@ import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import { 
     ArrowLeft, ClipboardList, Clock, CheckCircle, AlertTriangle, 
-    Filter, Search, Users, FileText, Calendar
+    Filter, Search, Users, FileText, Calendar, X
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
+import { Dialog, DialogContent } from '@/Components/ui/dialog';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import UserAvatar from '@/Components/UserAvatar';
@@ -43,6 +44,7 @@ export default function EmployeeShow({ employee, taskStats, tasks, statuses, pri
     const [priorityFilter, setPriorityFilter] = useState(filters.priority_id);
     const [typeFilter, setTypeFilter] = useState(filters.type_id);
     const [taskTypeFilter, setTaskTypeFilter] = useState(filters.task_type);
+    const [showPhoto, setShowPhoto] = useState(false);
 
     const applyFilters = () => {
         router.get(route('manager.employees.show', employee.id), {
@@ -104,12 +106,23 @@ export default function EmployeeShow({ employee, taskStats, tasks, statuses, pri
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
                     {/* Employee Info Card */}
                     <Card className="bg-[#0f0f10] border-slate-800/50 mb-6">
-                        <CardContent className="pt-4">
+                        <CardContent className="pt-6">
                             <div className="flex items-center gap-6">
-                                <UserAvatar user={employee} size="xl" />
+                                <button
+                                    type="button"
+                                    onClick={() => employee.profile_picture_url && setShowPhoto(true)}
+                                    className="w-28 h-28 rounded-full overflow-hidden ring-2 ring-slate-700 flex-shrink-0 hover:ring-indigo-500/50 transition-all cursor-pointer"
+                                >
+                                    <UserAvatar user={employee} size="xl" className="w-full h-full" />
+                                </button>
                                 <div>
                                     <h3 className="text-xl font-semibold text-white">{employee.name}</h3>
                                     <p className="text-sm text-slate-400">{employee.email}</p>
+                                    {employee.bio && (
+                                        <p className="text-sm text-slate-300 mt-2 max-w-md italic">
+                                            {employee.bio}
+                                        </p>
+                                    )}
                                     <div className="flex items-center gap-3 mt-2">
                                         {employee.roles && employee.roles.length > 0 ? (
                                             employee.roles.map((role) => (
@@ -427,6 +440,25 @@ export default function EmployeeShow({ employee, taskStats, tasks, statuses, pri
                     </Card>
                 </div>
             </div>
+
+            {/* Photo Preview Modal */}
+            <Dialog open={showPhoto} onOpenChange={setShowPhoto}>
+                <DialogContent className="max-w-lg bg-transparent border-none shadow-none">
+                    <button
+                        onClick={() => setShowPhoto(false)}
+                        className="absolute -top-10 right-0 text-white/80 hover:text-white"
+                    >
+                        <X className="w-6 h-6" />
+                    </button>
+                    {employee.profile_picture_url && (
+                        <img
+                            src={employee.profile_picture_url}
+                            alt={employee.name}
+                            className="w-full rounded-lg"
+                        />
+                    )}
+                </DialogContent>
+            </Dialog>
         </AuthenticatedLayout>
     );
 }

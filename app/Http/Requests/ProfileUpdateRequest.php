@@ -25,6 +25,17 @@ class ProfileUpdateRequest extends FormRequest
                 'max:255',
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
+            'profile_picture' => ['nullable', 'image', 'max:2048'],
+            'bio' => ['nullable', 'string', 'max:500'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'profile_picture.image' => 'The file must be an image.',
+            'profile_picture.max' => 'The image may not be larger than 2MB.',
+            'bio.max' => 'Bio must not exceed 500 characters.',
         ];
     }
 }

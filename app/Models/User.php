@@ -17,6 +17,7 @@ class User extends Authenticatable
         'email',
         'password',
         'profile_picture',
+        'bio',
     ];
 
     protected $hidden = [
@@ -42,6 +43,11 @@ class User extends Authenticatable
             return asset('storage/' . $this->profile_picture);
         }
         return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&color=7F9CF5&background=EBF4FF';
+    }
+
+    public function getBioAttribute(?string $value): string
+    {
+        return $value ?? "Hi I am {$this->name}, how was your day?";
     }
 
     public function todos()

@@ -1,18 +1,33 @@
 import type { Task, TaskStats, TaskStatus, TaskPriority, TaskType } from '@/types/Task';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
-import { 
-    ClipboardList, Clock, CheckCircle, AlertTriangle, 
-    Filter, Play, CheckSquare, Eye, Calendar, User, Users,Plus, X, Upload, File, AlertCircle, Download, Search, Edit, FileText
+import axios from 'axios';
+import {
+    ClipboardList, Clock, CheckCircle, AlertTriangle,
+    Filter, Play, CheckSquare, Eye, Calendar, User, Users,Plus, X, Upload, File, AlertCircle, Download, Search, Edit, FileText,
+    Columns, List, Loader2,
 } from 'lucide-react';
 import { Input } from '@/Components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/Components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/Components/ui/dialog';
 import { Button } from '@/Components/ui/button';
 import { Textarea } from '@/Components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
+import { Card, CardContent } from '@/Components/ui/card';
+import { Badge } from '@/Components/ui/badge';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
+
+interface BoardColumnData {
+    tasks: Task[];
+    total: number;
+    current_page: number;
+    last_page: number;
+    per_page: number;
+}
+
+interface BoardRecord {
+    [key: string]: BoardColumnData;
+}
 
 interface Props {
     tasks: {
@@ -26,15 +41,28 @@ interface Props {
         links: { url: string | null; label: string; active: boolean }[];
     };
     stats: TaskStats;
+    board: BoardRecord;
     filters: { status_id?: string; priority_id?: string; type_id?: string; search?: string };
     statuses: TaskStatus[];
     priorities: TaskPriority[];
     types: TaskType[];
 }
 
-export default function EmployeeTasksIndex({ tasks, stats, filters, statuses, priorities, types }: Props) {
+type ViewMode = 'list' | 'board';
+
+const STATUS_ORDER = ['pending', 'in progress', 'for review', 'completed'];
+
+const STATUS_COLORS: Record<string, { bg: string; border: string; dot: string; header: string }> = {
+    pending:       { bg: 'bg-yellow-500/5', border: 'border-yellow-500/20', dot: 'bg-yellow-400', header: 'text-yellow-400' },
+    'in progress': { bg: 'bg-blue-500/5', border: 'border-blue-500/20', dot: 'bg-blue-400', header: 'text-blue-400' },
+    'for review':  { bg: 'bg-amber-500/5', border: 'border-amber-500/20', dot: 'bg-amber-400', header: 'text-amber-400' },
+    completed:     { bg: 'bg-green-500/5', border: 'border-green-500/20', dot: 'bg-green-400', header: 'text-green-400' },
+};
+
+export default function EmployeeTasksIndex({ tasks, stats, board, filters, statuses, priorities, types }: Props) {
     const { hasPermission } = usePermissions();
-    
+
+    const [viewMode, setViewMode] = useState<ViewMode>('board');
     const [statusFilter, setStatusFilter] = useState(filters.status_id || '');
     const [priorityFilter, setPriorityFilter] = useState(filters.priority_id || '');
     const [typeFilter, setTypeFilter] = useState(filters.type_id || '');
@@ -49,6 +77,46 @@ export default function EmployeeTasksIndex({ tasks, stats, filters, statuses, pr
     const [submitting, setSubmitting] = useState(false);
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
+    // Board per-column state
+    const [columnTasks, setColumnTasks] = useState<Record<string, Task[]>>(() => {
+        const initial: Record<string, Task[]> = {};
+        for (const key of ['pending', 'in_progress', 'for_review', 'completed']) {
+            initial[key] = board[key]?.tasks ?? [];
+        }
+        return initial;
+    });
+    const [columnPage, setColumnPage] = useState<Record<string, number>>(() => {
+        const initial: Record<string, number> = {};
+        for (const key of ['pending', 'in_progress', 'for_review', 'completed']) {
+            initial[key] = 1;
+        }
+        return initial;
+    });
+    const [columnLoading, setColumnLoading] = useState<Record<string, boolean>>({});
+    const [columnHasMore, setColumnHasMore] = useState<Record<string, boolean>>(() => {
+        const initial: Record<string, boolean> = {};
+        for (const key of ['pending', 'in_progress', 'for_review', 'completed']) {
+            const col = board[key];
+            initial[key] = col ? col.current_page < col.last_page : false;
+        }
+        return initial;
+    });
+
+    useEffect(() => {
+        const initial: Record<string, Task[]> = {};
+        const pageInitial: Record<string, number> = {};
+        const hasMoreInitial: Record<string, boolean> = {};
+        for (const key of ['pending', 'in_progress', 'for_review', 'completed']) {
+            initial[key] = board[key]?.tasks ?? [];
+            pageInitial[key] = 1;
+            hasMoreInitial[key] = board[key] ? board[key].current_page < board[key].last_page : false;
+        }
+        setColumnTasks(initial);
+        setColumnPage(pageInitial);
+        setColumnHasMore(hasMoreInitial);
+        setColumnLoading({});
+    }, [board]);
+
     useEffect(() => {
         return () => {
             if (debounceTimer) {
@@ -59,25 +127,20 @@ export default function EmployeeTasksIndex({ tasks, stats, filters, statuses, pr
 
     const handleSearch = (value: string) => {
         setSearchQuery(value);
-
-        if (debounceTimer) {
-            clearTimeout(debounceTimer);
-        }
-
+        if (debounceTimer) clearTimeout(debounceTimer);
         const timer = setTimeout(() => {
-            router.get(route('tasks.index'), {
+            router.get(route('employee.tasks.index'), {
                 search: value || undefined,
                 status_id: statusFilter || undefined,
                 priority_id: priorityFilter || undefined,
                 type_id: typeFilter || undefined,
             }, { preserveState: true });
         }, 500);
-
         setDebounceTimer(timer);
     };
 
     const applyFilters = () => {
-        router.get(route('tasks.index'), {
+        router.get(route('employee.tasks.index'), {
             search: searchQuery || undefined,
             status_id: statusFilter || undefined,
             priority_id: priorityFilter || undefined,
@@ -87,7 +150,7 @@ export default function EmployeeTasksIndex({ tasks, stats, filters, statuses, pr
 
     const clearSearch = () => {
         setSearchQuery('');
-        router.get(route('tasks.index'), {
+        router.get(route('employee.tasks.index'), {
             status_id: statusFilter || undefined,
             priority_id: priorityFilter || undefined,
             type_id: typeFilter || undefined,
@@ -107,6 +170,7 @@ export default function EmployeeTasksIndex({ tasks, stats, filters, statuses, pr
         switch (normalized) {
             case 'pending': return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30';
             case 'in_progress': return 'text-blue-400 bg-blue-400/10 border-blue-400/30';
+            case 'for_review': return 'text-amber-400 bg-amber-400/10 border-amber-400/30';
             case 'completed': return 'text-green-400 bg-green-400/10 border-green-400/30';
             default: return 'text-slate-400 bg-slate-400/10 border-slate-400/30';
         }
@@ -122,16 +186,21 @@ export default function EmployeeTasksIndex({ tasks, stats, filters, statuses, pr
         }
     };
 
+    const getPriorityBadgeVariant = (priority: string) => {
+        const normalized = priority.toLowerCase();
+        if (normalized === 'high') return 'destructive';
+        if (normalized === 'medium') return 'default';
+        return 'secondary';
+    };
+
     const formatDate = (date: string | undefined) => {
         if (!date) return 'No due date';
         const dateObj = new Date(date);
         const today = new Date();
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
-
         if (dateObj.toDateString() === today.toDateString()) return 'Today';
         if (dateObj.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
-        
         return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     };
 
@@ -174,16 +243,13 @@ export default function EmployeeTasksIndex({ tasks, stats, filters, statuses, pr
 
     const handleSubmitTask = () => {
         if (!selectedTask) return;
-        
         setSubmitting(true);
         setFormErrors({});
-        
         const formData = new FormData();
         formData.append('solution_text', solution);
         attachments.forEach((file, index) => {
             formData.append(`attachments[${index}]`, file);
         });
-
         router.post(route('employee.tasks.submit', selectedTask.id), formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
             onError: (errors) => {
@@ -196,6 +262,79 @@ export default function EmployeeTasksIndex({ tasks, stats, filters, statuses, pr
             },
             preserveScroll: true,
         });
+    };
+
+    const STATUS_NAME_MAP: Record<string, string> = {
+        pending: 'Pending',
+        in_progress: 'In Progress',
+        for_review: 'For Review',
+        completed: 'Completed',
+    };
+
+    const loadMore = async (statusKey: string) => {
+        const statusName = STATUS_NAME_MAP[statusKey];
+        if (!statusName || columnLoading[statusKey]) return;
+
+        setColumnLoading((prev) => ({ ...prev, [statusKey]: true }));
+
+        try {
+            const nextPage = columnPage[statusKey] + 1;
+            const response = await axios.get(route('employee.tasks.board.column'), {
+                params: {
+                    status: statusName,
+                    page: nextPage,
+                    search: searchQuery || undefined,
+                    priority_id: priorityFilter || undefined,
+                    type_id: typeFilter || undefined,
+                },
+            });
+
+            const data = response.data as BoardColumnData;
+            setColumnTasks((prev) => ({
+                ...prev,
+                [statusKey]: [...prev[statusKey], ...data.tasks],
+            }));
+            setColumnPage((prev) => ({ ...prev, [statusKey]: nextPage }));
+            setColumnHasMore((prev) => ({ ...prev, [statusKey]: nextPage < data.last_page }));
+        } catch (error) {
+            console.error('Failed to load more tasks:', error);
+        } finally {
+            setColumnLoading((prev) => ({ ...prev, [statusKey]: false }));
+        }
+    };
+
+    const renderTaskActions = (task: Task) => {
+        const statusName = task.task_status?.name?.toLowerCase();
+        const isUpdating = updatingTaskId === task.id;
+
+        switch (statusName) {
+            case 'pending':
+                return (
+                    <Button size="sm" onClick={() => handleStartTask(task.id)} disabled={isUpdating} className="bg-blue-600 hover:bg-blue-500 text-white gap-1 w-full">
+                        <Play className="w-3 h-3" /> Start
+                    </Button>
+                );
+            case 'in progress':
+                return (
+                    <Button size="sm" onClick={() => openSubmitModal(task)} className="bg-indigo-600 hover:bg-indigo-500 text-white gap-1 w-full">
+                        <Edit className="w-3 h-3" /> Update Task
+                    </Button>
+                );
+            case 'for review':
+                return (
+                    <span className="text-xs text-amber-400 bg-amber-500/10 px-2 py-1 rounded border border-amber-500/30 block text-center">
+                        Wait for the result
+                    </span>
+                );
+            case 'completed':
+                return (
+                    <Button size="sm" onClick={() => openSubmitModal(task)} className="bg-slate-700 hover:bg-slate-600 text-white gap-1 w-full">
+                        <FileText className="w-3 h-3" /> View Details
+                    </Button>
+                );
+            default:
+                return null;
+        }
     };
 
     return (
@@ -240,9 +379,38 @@ export default function EmployeeTasksIndex({ tasks, stats, filters, statuses, pr
                         </Card>
                     </div>
 
-                    {/* Filters */}
+                    {/* Filters + View Toggle */}
                     <Card className="bg-[#0f0f10] border-slate-800/50 mb-6">
-                        <CardContent className="pt-4">
+                        <div className="pt-4 px-6">
+                            <div className="flex items-center justify-between gap-4 mb-4">
+                                <p className="text-sm font-medium text-slate-300">Filters</p>
+                                <div className="flex items-center gap-1 bg-slate-900/50 rounded-lg p-1 border border-slate-800">
+                                    <button
+                                        onClick={() => setViewMode('list')}
+                                        className={cn(
+                                            "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                                            viewMode === 'list'
+                                                ? 'bg-indigo-600 text-white shadow-sm'
+                                                : 'text-slate-400 hover:text-slate-200'
+                                        )}
+                                    >
+                                        <List className="w-3.5 h-3.5" /> List
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('board')}
+                                        className={cn(
+                                            "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                                            viewMode === 'board'
+                                                ? 'bg-indigo-600 text-white shadow-sm'
+                                                : 'text-slate-400 hover:text-slate-200'
+                                        )}
+                                    >
+                                        <Columns className="w-3.5 h-3.5" /> Board
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <CardContent className="pb-4">
                             <div className="flex flex-wrap gap-4 items-end">
                                 <div className="flex-1 min-w-[200px]">
                                     <label className="text-xs text-slate-400 mb-1 block">Search</label>
@@ -299,114 +467,231 @@ export default function EmployeeTasksIndex({ tasks, stats, filters, statuses, pr
                         </CardContent>
                     </Card>
 
-                    {/* Tasks List */}
-                    <div className="space-y-4">
-                        {tasks.data.length === 0 ? (
-                            <Card className="bg-[#0f0f10] border-slate-800/50">
-                                <CardContent className="py-12 text-center">
-                                    <ClipboardList className="w-12 h-12 mx-auto text-slate-600 mb-4" />
-                                    <p className="text-slate-500">No tasks assigned to you</p>
-                                </CardContent>
-                            </Card>
-                        ) : (
-                            tasks.data.map((task) => {
-                                const overdue = isOverdue(task.due_date, task.task_status?.name || '');
-                                const isUpdating = updatingTaskId === task.id;
-                                const otherAssignees = task.other_group_assignees
-                                    ?.map(t => t.assignee?.name)
-                                    .filter(Boolean) || [];
+                    {/* ============ LIST VIEW ============ */}
+                    {viewMode === 'list' && (
+                        <div className="space-y-4">
+                            {tasks.data.length === 0 ? (
+                                <Card className="bg-[#0f0f10] border-slate-800/50">
+                                    <CardContent className="py-12 text-center">
+                                        <ClipboardList className="w-12 h-12 mx-auto text-slate-600 mb-4" />
+                                        <p className="text-slate-500">No tasks assigned to you</p>
+                                    </CardContent>
+                                </Card>
+                            ) : (
+                                tasks.data.map((task) => {
+                                    const overdue = isOverdue(task.due_date, task.task_status?.name || '');
+                                    const isUpdating = updatingTaskId === task.id;
+                                    const otherAssignees = task.other_group_assignees
+                                        ?.map(t => t.assignee?.name)
+                                        .filter(Boolean) || [];
 
-                                return (
-                                    <Card key={task.id} className={cn("bg-[#0f0f10] border-slate-800/50 transition-all", overdue && "border-red-500/30")}>
-                                        <CardContent className="pt-4">
-                                            <div className="flex items-start justify-between gap-4">
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-3 mb-2">
-                                                        <h3 className="font-semibold text-white truncate">{task.title}</h3>
-                                                        <span className={cn("px-2 py-0.5 rounded text-xs font-medium border shrink-0", getStatusColor(task.task_status?.name || ''))}>
-                                                            {task.task_status?.name || 'Unknown'}
-                                                        </span>
-                                                        <span className={cn("px-2 py-0.5 rounded text-xs font-medium border shrink-0", getPriorityColor(task.task_priority?.name || ''))}>
-                                                            {task.task_priority?.name || 'Unknown'}
-                                                        </span>
-                                                    </div>
+                                    return (
+                                        <Card key={task.id} className={cn("bg-[#0f0f10] border-slate-800/50 transition-all", overdue && "border-red-500/30")}>
+                                            <CardContent className="pt-4">
+                                                <div className="flex items-start justify-between gap-4">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-3 mb-2">
+                                                            <h3 className="font-semibold text-white truncate">{task.title}</h3>
+                                                            <span className={cn("px-2 py-0.5 rounded text-xs font-medium border shrink-0", getStatusColor(task.task_status?.name || ''))}>
+                                                                {task.task_status?.name || 'Unknown'}
+                                                            </span>
+                                                            <span className={cn("px-2 py-0.5 rounded text-xs font-medium border shrink-0", getPriorityColor(task.task_priority?.name || ''))}>
+                                                                {task.task_priority?.name || 'Unknown'}
+                                                            </span>
+                                                        </div>
 
-                                                    {task.description && (
-                                                        <p className="text-sm text-slate-400 mb-3 line-clamp-2">{task.description}</p>
-                                                    )}
+                                                        {task.description && (
+                                                            <p className="text-sm text-slate-400 mb-3 line-clamp-2">{task.description}</p>
+                                                        )}
 
-                                                    <div className="flex flex-col gap-2">
-                                                        {/* Standard Meta */}
-                                                        <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
-                                                            <div className="flex items-center gap-1">
-                                                                <Calendar className="w-4 h-4" />
-                                                                <span className={cn(overdue && "text-red-400")}>{formatDate(task.due_date)}</span>
-                                                                {overdue && <AlertTriangle className="w-4 h-4 text-red-400 ml-1" />}
-                                                            </div>
-                                                            {task.assigner && (
+                                                        <div className="flex flex-col gap-2">
+                                                            <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
                                                                 <div className="flex items-center gap-1">
-                                                                    <User className="w-4 h-4" />
-                                                                    <span>Assigned by {task.assigner.name}</span>
+                                                                    <Calendar className="w-4 h-4" />
+                                                                    <span className={cn(overdue && "text-red-400")}>{formatDate(task.due_date)}</span>
+                                                                    {overdue && <AlertTriangle className="w-4 h-4 text-red-400 ml-1" />}
+                                                                </div>
+                                                                {task.assigner && (
+                                                                    <div className="flex items-center gap-1">
+                                                                        <User className="w-4 h-4" />
+                                                                        <span>Assigned by {task.assigner.name}</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            {task.group_id && otherAssignees.length > 0 && (
+                                                                <div className="flex items-center gap-2 text-sm text-slate-400 bg-slate-800/30 rounded-md px-2 py-1 w-fit">
+                                                                    <Users className="w-4 h-4 text-indigo-400" />
+                                                                    <span>
+                                                                        Group task with: <span className="text-slate-200 font-medium">{otherAssignees.join(', ')}</span>
+                                                                    </span>
+                                                                </div>
+                                                            )}
+
+                                                            {task.submission?.review_comment && task.task_status?.name?.toLowerCase() === 'in progress' && (
+                                                                <div className="flex items-start gap-2 text-sm bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2">
+                                                                    <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+                                                                    <div>
+                                                                        <p className="text-red-400 font-medium">Rejected by {task.submission.reviewer?.name || 'Manager'}</p>
+                                                                        <p className="text-slate-300 mt-1">Reason: {task.submission.review_comment}</p>
+                                                                    </div>
                                                                 </div>
                                                             )}
                                                         </div>
+                                                    </div>
 
-                                                        {/* Group Task Meta - NEW */}
-                                                        {task.group_id && otherAssignees.length > 0 && (
-                                                            <div className="flex items-center gap-2 text-sm text-slate-400 bg-slate-800/30 rounded-md px-2 py-1 w-fit">
-                                                                <Users className="w-4 h-4 text-indigo-400" />
-                                                                <span>
-                                                                    Group task with: <span className="text-slate-200 font-medium">{otherAssignees.join(', ')}</span>
-                                                                </span>
-                                                            </div>
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        {task.task_status?.name?.toLowerCase() === 'pending' && (
+                                                            <Button size="sm" onClick={() => handleStartTask(task.id)} disabled={isUpdating} className="bg-blue-600 hover:bg-blue-500 text-white gap-1">
+                                                                <Play className="w-3 h-3" /> Start
+                                                            </Button>
                                                         )}
-
-                                                        {/* Rejection Notice */}
-                                                        {task.submission?.review_comment && task.task_status?.name?.toLowerCase() === 'in progress' && (
-                                                            <div className="flex items-start gap-2 text-sm bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2">
-                                                                <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
-                                                                <div>
-                                                                    <p className="text-red-400 font-medium">Rejected by {task.submission.reviewer?.name || 'Manager'}</p>
-                                                                    <p className="text-slate-300 mt-1">Reason: {task.submission.review_comment}</p>
-                                                                </div>
-                                                            </div>
+                                                        {task.task_status?.name?.toLowerCase() === 'in progress' && (
+                                                            <Button size="sm" onClick={() => openSubmitModal(task)} className="bg-indigo-600 hover:bg-indigo-500 text-white gap-1">
+                                                                <Edit className="w-3 h-3" /> Update Task
+                                                            </Button>
+                                                        )}
+                                                        {task.task_status?.name?.toLowerCase() === 'for review' && (
+                                                            <span className="text-sm text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-md border border-amber-500/30">
+                                                                Wait for the result
+                                                            </span>
+                                                        )}
+                                                        {task.task_status?.name?.toLowerCase() === 'completed' && (
+                                                            <Button size="sm" onClick={() => openSubmitModal(task)} className="bg-slate-700 hover:bg-slate-600 text-white gap-1">
+                                                                <FileText className="w-3 h-3" /> View Details
+                                                            </Button>
                                                         )}
                                                     </div>
                                                 </div>
+                                            </CardContent>
+                                        </Card>
+                                    );
+                                })
+                            )}
+                        </div>
+                    )}
 
-                                                {/* Status Actions */}
-                                                <div className="flex items-center gap-2 shrink-0">
-                                                    {task.task_status?.name?.toLowerCase() === 'pending' && (
-                                                        <Button size="sm" onClick={() => handleStartTask(task.id)} disabled={isUpdating} className="bg-blue-600 hover:bg-blue-500 text-white gap-1">
-                                                            <Play className="w-3 h-3" /> Start
-                                                        </Button>
-                                                    )}
-                                                    {task.task_status?.name?.toLowerCase() === 'in progress' && (
-                                                        <Button size="sm" onClick={() => openSubmitModal(task)} className="bg-indigo-600 hover:bg-indigo-500 text-white gap-1">
-                                                            <Edit className="w-3 h-3" /> Update Task
-                                                        </Button>
-                                                    )}
-                                                    {task.task_status?.name?.toLowerCase() === 'for review' && (
-                                                        <span className="text-sm text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-md border border-amber-500/30">
-                                                            Wait for the result
-                                                        </span>
-                                                    )}
-                                                    {task.task_status?.name?.toLowerCase() === 'completed' && (
-                                                        <Button size="sm" onClick={() => openSubmitModal(task)} className="bg-slate-700 hover:bg-slate-600 text-white gap-1">
-                                                            <FileText className="w-3 h-3" /> View Details
-                                                        </Button>
-                                                    )}
+                    {/* ============ BOARD VIEW ============ */}
+                    {viewMode === 'board' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {STATUS_ORDER.map((statusKey) => {
+                                const displayName = statusKey.replace(/\b\w/g, (c) => c.toUpperCase());
+                                const columnKey = statusKey.replace(/\s+/g, '_');
+                                const tasks = columnTasks[columnKey] || [];
+                                const colors = STATUS_COLORS[statusKey] || { bg: '', border: '', dot: 'bg-slate-400', header: 'text-slate-400' };
+                                const total = board[columnKey]?.total ?? 0;
+                                const loading = columnLoading[columnKey] || false;
+                                const hasMore = columnHasMore[columnKey] ?? false;
+
+                                return (
+                                    <div key={statusKey} className={cn("rounded-xl border bg-[#0f0f10] flex flex-col", colors.border)}>
+                                        {/* Column Header */}
+                                        <div className={cn("flex items-center gap-2 px-4 py-3 border-b shrink-0", colors.border)}>
+                                            <span className={cn("w-2 h-2 rounded-full", colors.dot)} />
+                                            <span className={cn("text-sm font-semibold", colors.header)}>{displayName}</span>
+                                            <span className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
+                                                {total}
+                                            </span>
+                                        </div>
+
+                                        {/* Column Tasks */}
+                                        <div className="p-3 space-y-3 flex-1 overflow-y-auto min-h-[200px] max-h-[600px]">
+                                            {tasks.length === 0 && !loading ? (
+                                                <div className="text-center py-8">
+                                                    <p className="text-xs text-slate-600">No tasks</p>
                                                 </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                );
-                            })
-                        )}
-                    </div>
+                                            ) : (
+                                                tasks.map((task) => {
+                                                    const overdue = isOverdue(task.due_date, task.task_status?.name || '');
+                                                    const otherAssignees = task.other_group_assignees
+                                                        ?.map(t => t.assignee?.name)
+                                                        .filter(Boolean) || [];
 
-                    {/* Pagination */}
-                    {tasks.last_page > 1 && (
+                                                    return (
+                                                        <div
+                                                            key={task.id}
+                                                            className={cn(
+                                                                "rounded-lg border bg-slate-900/40 p-3 space-y-2 transition-all hover:border-slate-600/50",
+                                                                overdue ? "border-red-500/30" : "border-slate-800/50"
+                                                            )}
+                                                        >
+                                                            {/* Title + Priority */}
+                                                            <div className="flex items-start justify-between gap-2">
+                                                                <p className="text-sm font-medium text-slate-200 leading-snug line-clamp-2">{task.title}</p>
+                                                                {task.task_priority && (
+                                                                    <Badge
+                                                                        variant={getPriorityBadgeVariant(task.task_priority.name)}
+                                                                        className="shrink-0 text-[10px] px-1.5 py-0"
+                                                                    >
+                                                                        {task.task_priority.name}
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Rejection */}
+                                                            {task.submission?.review_comment && task.task_status?.name?.toLowerCase() === 'in progress' && (
+                                                                <div className="flex items-start gap-1.5 text-xs bg-red-500/10 border border-red-500/30 rounded px-2 py-1">
+                                                                    <AlertCircle className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
+                                                                    <span className="text-slate-300 line-clamp-2">{task.submission.review_comment}</span>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Meta */}
+                                                            <div className="flex items-center justify-between text-xs text-slate-500">
+                                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                                    <Calendar className="w-3 h-3 shrink-0" />
+                                                                    <span className={cn("truncate", overdue && "text-red-400")}>{formatDate(task.due_date)}</span>
+                                                                    {overdue && <AlertTriangle className="w-3 h-3 text-red-400 shrink-0" />}
+                                                                </div>
+                                                                {task.assigner && (
+                                                                    <span className="truncate ml-1" title={task.assigner.name}>
+                                                                        {task.assigner.name.split(' ')[0]}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Group */}
+                                                            {task.group_id && otherAssignees.length > 0 && (
+                                                                <div className="flex items-center gap-1 text-xs text-indigo-400">
+                                                                    <Users className="w-3 h-3" />
+                                                                    <span className="truncate">+{otherAssignees.length}</span>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Actions */}
+                                                            <div className="pt-1">
+                                                                {renderTaskActions(task)}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
+
+                                            {/* Loading indicator */}
+                                            {loading && (
+                                                <div className="flex justify-center py-3">
+                                                    <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />
+                                                </div>
+                                            )}
+
+                                            {/* Load More */}
+                                            {hasMore && !loading && (
+                                                <button
+                                                    onClick={() => loadMore(columnKey)}
+                                                    className="w-full py-2 text-xs text-slate-500 hover:text-slate-300 transition-colors rounded-lg hover:bg-slate-800/30"
+                                                >
+                                                    Load more
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* Pagination (list view only) */}
+                    {viewMode === 'list' && tasks.last_page > 1 && (
                         <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-800">
                             <div className="text-sm text-slate-400">
                                 Showing {tasks.from} to {tasks.to} of {tasks.total} tasks
@@ -415,7 +700,7 @@ export default function EmployeeTasksIndex({ tasks, stats, filters, statuses, pr
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => router.get(route('tasks.index'), {
+                                    onClick={() => router.get(route('employee.tasks.index'), {
                                         page: tasks.current_page - 1,
                                         search: searchQuery || undefined,
                                         status_id: statusFilter || undefined,
@@ -433,7 +718,7 @@ export default function EmployeeTasksIndex({ tasks, stats, filters, statuses, pr
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => router.get(route('tasks.index'), {
+                                    onClick={() => router.get(route('employee.tasks.index'), {
                                         page: tasks.current_page + 1,
                                         search: searchQuery || undefined,
                                         status_id: statusFilter || undefined,
@@ -467,9 +752,8 @@ export default function EmployeeTasksIndex({ tasks, stats, filters, statuses, pr
                             {selectedTask?.title}
                         </DialogDescription>
                     </DialogHeader>
-                    
+
                     <div className="space-y-4">
-                        {/* Solution Text */}
                         <div className="grid gap-2">
                             <label className="text-sm font-medium text-slate-300">Solution / Notes</label>
                             <Textarea
@@ -494,7 +778,6 @@ export default function EmployeeTasksIndex({ tasks, stats, filters, statuses, pr
                             )}
                         </div>
 
-                        {/* File Upload */}
                         <div className="grid gap-2">
                             <label className="text-sm font-medium text-slate-300">Attachments</label>
                             {selectedTask?.task_status?.name?.toLowerCase() !== 'completed' ? (
@@ -512,15 +795,12 @@ export default function EmployeeTasksIndex({ tasks, stats, filters, statuses, pr
                                         />
                                         <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center gap-2">
                                             <Upload className="w-8 h-8 text-slate-500" />
-                                            <span className="text-sm text-slate-400">
-                                                Click to upload files
-                                            </span>
+                                            <span className="text-sm text-slate-400">Click to upload files</span>
                                         </label>
                                     </div>
                                     {formErrors.attachments && (
                                         <p className="text-sm text-red-400">{formErrors.attachments}</p>
                                     )}
-                                    
                                     {attachments.length > 0 && (
                                         <div className="space-y-2 mt-2">
                                             {attachments.map((file, index) => (
@@ -558,9 +838,7 @@ export default function EmployeeTasksIndex({ tasks, stats, filters, statuses, pr
                                             </div>
                                         ))
                                     ) : (
-                                        <div className="text-sm text-slate-500 italic">
-                                            No attachments
-                                        </div>
+                                        <div className="text-sm text-slate-500 italic">No attachments</div>
                                     )}
                                 </div>
                             )}

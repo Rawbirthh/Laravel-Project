@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
-import { CheckSquare, TrendingUp, Shield, ClipboardList, Plus, Clock, Search } from 'lucide-react';
+import { CheckSquare, TrendingUp, Shield, ClipboardList, Plus, Clock, Search, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
@@ -153,15 +153,25 @@ export default function ManagerDashboard({ stats, taskStats, users, recentTasks,
                             <CardHeader>
                                 <div className="flex items-center justify-between">
                                     <CardTitle className="text-white">Team Overview ({users.total})</CardTitle>
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                        <Input
-                                            type="text"
-                                            placeholder="Search team..."
-                                            value={teamSearchQuery}
-                                            onChange={(e) => handleTeamSearch(e.target.value)}
-                                            className="pl-9 bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50 focus:ring-indigo-500/20 w-48"
-                                        />
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            onClick={() => router.get(route('manager.department-team'))}
+                                            size="sm"
+                                            className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2"
+                                        >
+                                            <Users className="w-3.5 h-3.5" />
+                                            View All Department Team
+                                        </Button>
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                            <Input
+                                                type="text"
+                                                placeholder="Search team..."
+                                                value={teamSearchQuery}
+                                                onChange={(e) => handleTeamSearch(e.target.value)}
+                                                className="pl-9 bg-slate-900/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50 focus:ring-indigo-500/20 w-48"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </CardHeader>

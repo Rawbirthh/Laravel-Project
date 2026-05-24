@@ -573,7 +573,7 @@ export default function ManagerTasksCreate({ employees, priorities, types, assig
                         <div className="space-y-4">
                             {/* Submitter Info */}
                             <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg">
-                                <UserAvatar user={selectedSubmission.submission.user} size="sm" />
+                                {selectedSubmission.submission.user && <UserAvatar user={selectedSubmission.submission.user} size="sm" />}
                                 <div>
                                     <p className="text-sm font-medium text-white">{selectedSubmission.submission.user?.name}</p>
                                     <p className="text-xs text-slate-400">Submitted {selectedSubmission.submission.submitted_at ? new Date(selectedSubmission.submission.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</p>

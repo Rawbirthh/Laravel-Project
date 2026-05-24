@@ -15,6 +15,7 @@ use App\Http\Requests\UpdateTaskRequest;
 use App\Http\Requests\UpdateTaskStatusRequest;
 use App\Http\Requests\SubmitTaskRequest;
 use App\Http\Requests\ReviewTaskRequest;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -67,10 +68,12 @@ class TaskController extends Controller
 
         $tasks = $this->taskService->getTasksAssignedTo($user, $filters);
         $stats = $this->taskService->getEmployeeTaskStats($user);
+        $board = $this->taskService->getEmployeeBoardData($user, $filters);
 
         return Inertia::render('Employee/Tasks/Index', [
             'tasks' => $tasks,
             'stats' => $stats,
+            'board' => $board,
             'filters' => $filters,
             'statuses' => $statuses,
             'priorities' => $priorities,
@@ -197,5 +200,25 @@ class TaskController extends Controller
 
         return redirect()->back()
             ->with('success', 'Task review completed!');
+    }
+
+    public function loadColumn(Request $request): JsonResponse
+    {
+        $this->authorize('viewOwn', Task::class);
+
+        $validStatuses = ['Pending', 'In Progress', 'For Review', 'Completed'];
+        $statusName = $request->query('status');
+
+        if (!in_array($statusName, $validStatuses)) {
+            return response()->json(['error' => 'Invalid status'], 422);
+        }
+
+        $user = auth()->user();
+        $page = max(1, (int) $request->query('page', 1));
+        $filters = $request->only(['search', 'priority_id', 'type_id']);
+
+        $data = $this->taskService->getEmployeeColumnTasks($user, $statusName, $page, $filters);
+
+        return response()->json($data);
     }
 }

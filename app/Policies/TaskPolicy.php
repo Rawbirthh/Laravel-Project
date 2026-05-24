@@ -68,8 +68,7 @@ class TaskPolicy
 
     public function reviewTask(User $user, Task $task): bool
     {
-        // return $user->hasPermission('review.tasks') || $task->assigned_by === $user->id;
-        return $task->assigned_by === $user->id;
+        return $user->hasPermission('review.tasks');
     }
 }
 

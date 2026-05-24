@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Task;
 use App\Models\User;
+use App\Repositories\TaskRepository;
 use App\Repositories\UserRepository;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -15,11 +16,13 @@ class TaskService
 {
     protected UserRepository $userRepository;
     protected NotificationService $notificationService;
+    protected TaskRepository $taskRepository;
 
-    public function __construct(UserRepository $userRepository, NotificationService $notificationService)
+    public function __construct(UserRepository $userRepository, NotificationService $notificationService, TaskRepository $taskRepository)
     {
         $this->userRepository = $userRepository;
         $this->notificationService = $notificationService;
+        $this->taskRepository = $taskRepository;
     }
 
     public function createTask(array $data, User $manager): void
@@ -231,39 +234,7 @@ class TaskService
 
     public function getTasksAssignedTo(User $employee, array $filters = []): LengthAwarePaginator
     {
-        $query = Task::with([
-            'assigner', 
-            'department', 
-            'otherGroupAssignees.assignee', 
-            'taskStatus', 
-            'taskPriority', 
-            'taskType', 
-            'submission', 
-            'submission.reviewer',
-            'submission.attachments'
-        ])
-            ->where('assigned_to', $employee->id);
-
-        if (!empty($filters['search'])) {
-            $query->where(function ($q) use ($filters) {
-                $q->where('title', 'like', "%{$filters['search']}%")
-                  ->orWhere('description', 'like', "%{$filters['search']}%");
-            });
-        }
-
-        if (!empty($filters['status_id'])) {
-            $query->where('status_id', $filters['status_id']);
-        }
-
-        if (!empty($filters['priority_id'])) {
-            $query->where('priority_id', $filters['priority_id']);
-        }
-
-        if (!empty($filters['type_id'])) {
-            $query->where('type_id', $filters['type_id']);
-        }
-
-        return $query->latest()->paginate(15);
+        return $this->taskRepository->getPaginatedEmployeeTasks($employee, $filters);
     }
 
     public function getAssignableEmployees(User $manager): Collection
@@ -290,16 +261,7 @@ class TaskService
 
     public function getEmployeeTaskStats(User $employee): array
     {
-        $tasks = Task::where('assigned_to', $employee->id)->with('taskStatus')->get();
-
-        $statusCounts = $tasks->pluck('taskStatus.name')->countBy();
-
-        return [
-            'total' => $tasks->count(),
-            'pending' => $statusCounts->get('Pending', 0),
-            'in_progress' => $statusCounts->get('In Progress', 0),
-            'completed' => $statusCounts->get('Completed', 0),
-        ];
+        return $this->taskRepository->getEmployeeTaskStats($employee);
     }
 
     public function getEmployeeAssignedTasksStats(User $employee): array
@@ -340,5 +302,15 @@ class TaskService
             'recentTasks' => $recentTasks,
             'assignedTasks' => $assignedTasks,
         ];
+    }
+
+    public function getEmployeeBoardData(User $employee, array $filters = []): array
+    {
+        return $this->taskRepository->getEmployeeBoardData($employee, $filters);
+    }
+
+    public function getEmployeeColumnTasks(User $employee, string $statusName, int $page, array $filters = []): array
+    {
+        return $this->taskRepository->getEmployeeColumnTasks($employee, $statusName, $page, $filters);
     }
 }
