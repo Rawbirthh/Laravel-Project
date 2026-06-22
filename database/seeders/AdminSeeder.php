@@ -18,7 +18,7 @@ class AdminSeeder extends Seeder
             ]
         );
 
-        $userRole = Role::firstOrCreate(
+        Role::firstOrCreate(
             ['code' => 'usr'],
             [
                 'slug' => 'user',
@@ -27,10 +27,10 @@ class AdminSeeder extends Seeder
         );
 
         $admin = User::firstOrCreate(
-            ['email' => 'admin@test.com'],
+            ['email' => env('ADMIN_EMAIL')],
             [
-                'name' => 'Admin User',
-                'password' => bcrypt('robert123'),
+                'name' => env('ADMIN_NAME', 'Administrator'),
+                'password' => bcrypt(env('ADMIN_PASSWORD')),
                 'profile_picture' => null,
             ]
         );
