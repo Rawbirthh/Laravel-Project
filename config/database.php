@@ -2,6 +2,16 @@
 
 use Illuminate\Support\Str;
 
+//detect if we are running on Windows (Local) or Linux (Render)
+$isWindows = PHP_OS_FAMILY === 'Windows';
+
+//set the SSL path only if we are on Linux (Render) crucial for production
+$mysqlSslOptions = [];
+if (!$isWindows) {
+    $mysqlSslOptions[PDO::MYSQL_ATTR_SSL_CA] = '/etc/ssl/certs/ca-certificates.crt';
+    $mysqlSslOptions[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
+}
+
 return [
 
     /*
@@ -58,9 +68,7 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                (PHP_VERSION_ID >= 80500 ? \Pdo\Mysql::ATTR_SSL_CA : \PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
-            ]) : [],
+            'options' => extension_loaded('pdo_mysql') ? $mysqlSslOptions : [],
         ],
 
         'mariadb' => [

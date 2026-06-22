@@ -15,6 +15,7 @@ use App\Policies\TodoPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\URL;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -35,5 +36,9 @@ class AppServiceProvider extends ServiceProvider
         TaskPriority::observe(AdminDashboardCacheObserver::class);
         TaskStatus::observe(AdminDashboardCacheObserver::class);
         TaskType::observe(AdminDashboardCacheObserver::class);
+
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
     }
 }
