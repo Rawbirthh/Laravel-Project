@@ -1,7 +1,7 @@
 import { usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useEffect } from 'react';
-import { ToastProvider, useToast } from '@/components/ui/toast-provider';
-import { Sidebar } from '@/components/Sidebar';
+import { ToastProvider, useToast } from '@/Components/ui/toast-provider';
+import { Sidebar } from '@/Components/Sidebar';
 import NotificationBell from '@/Components/NotificationBell';
 
 export default function Authenticated({
